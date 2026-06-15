@@ -265,8 +265,16 @@ export default function AdminPanel({
     return approvedUsage ? { occupied: true, req: approvedUsage } : { occupied: false };
   };
 
-  // Get cohorts (groups of batches)
-  const batches = ['All', ...Array.from(new Set(users.map(u => u.batch).filter(Boolean)))];
+  // Get cohorts (groups of batches) strictly based on first 2 characters of student id
+  const batches = [
+    'All', 
+    ...Array.from(new Set(
+      users
+        .filter(u => u.role === 'นักศึกษา')
+        .map(u => String(u.id || '').substring(0, 2))
+        .filter(b => b.length === 2 && !isNaN(Number(b)))
+    )).sort()
+  ];
 
   return (
     <div className="space-y-6 text-slate-850 font-sans text-xs animate-fade-in">
@@ -433,7 +441,11 @@ export default function AdminPanel({
                   </thead>
                   <tbody>
                     {users
-                      .filter(u => u.role === 'นักศึกษา' && (filterBatch === 'All' || u.batch === filterBatch))
+                      .filter(u => {
+                        if (u.role !== 'นักศึกษา') return false;
+                        const studentBatch = String(u.id || '').substring(0, 2);
+                        return filterBatch === 'All' || studentBatch === filterBatch;
+                      })
                       .map(student => (
                         <tr key={student.id} className="border-b border-neutral-100 hover:bg-neutral-50">
                           <td className="py-2 px-1">
@@ -926,7 +938,7 @@ export default function AdminPanel({
                   />
                   <div className="space-y-1 my-auto">
                     <p className="font-sans text-sm font-black text-neutral-950">{verifyUser.firstName} {verifyUser.lastName}</p>
-                    <p className="text-[10px] text-neutral-600 font-medium">ตำแหน่งหน้าที่: <b>{verifyUser.role}</b> {verifyUser.batch ? `| รุ่น ${verifyUser.batch}` : ''}</p>
+                    <p className="text-[10px] text-neutral-600 font-medium">ตำแหน่งหน้าที่: <b>{verifyUser.role}</b> {verifyUser.role === 'นักศึกษา' ? `| รุ่น ${String(verifyUser.id || '').substring(0, 2)}` : (verifyUser.batch ? `| รุ่น ${verifyUser.batch}` : '')}</p>
                     <p className="text-[10px] text-neutral-550 font-mono">อีเมลจดสิทธิ์: {verifyUser.email}</p>
                     <p className="text-[10px] text-neutral-550 font-mono">รหัสประจำตัว: <strong className="text-neutral-900 underline font-bold">{verifyUser.id}</strong></p>
                   </div>

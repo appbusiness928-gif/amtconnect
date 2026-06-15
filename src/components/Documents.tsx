@@ -4,9 +4,10 @@
  */
 
 import React from 'react';
-import { Printer, X, Award, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Printer, X, Award, ShieldAlert, CheckCircle, FileText } from 'lucide-react';
 import { User, RoomRequest, RoomUsageRecord, BorrowRecord } from '../types';
 import { getAppOriginForQR, APIService, syncWithGoogleSheets } from '../lib/api';
+import Swal from 'sweetalert2';
 
 export function ThalangLogo({ className = "w-16 h-16" }: { className?: string }) {
   return (
@@ -154,6 +155,8 @@ function formatEffectiveDate(dateStr: string | undefined): string {
 interface RoomRequestDocProps {
   request: RoomRequest;
   onClose: () => void;
+  onRecordUsage?: (requestId: string, report: string, customRoom?: string, signature?: string) => void;
+  currentUser?: User;
 }
 
 // Robust Helper to convert Date String (DD/MM/YYYY or YYYY-MM-DD) into Thai BE date string (e.g., 19 ส.ค. 68)
@@ -195,10 +198,160 @@ function formatThaiDate(dateStr: string): string {
   return dateStr;
 }
 
-export function RoomRequestDoc({ request, onClose }: RoomRequestDocProps) {
+export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }: RoomRequestDocProps) {
+  const isRequester = currentUser && (
+    currentUser.id === request.requesterId || 
+    `${currentUser.firstName} ${currentUser.lastName}` === request.requesterName
+  );
+
   const handlePrint = () => {
     syncWithGoogleSheets(APIService.getDb()).catch(() => {});
     window.print();
+  };
+
+  const promptRecordUsage = () => {
+    Swal.fire({
+      title: 'บันทึกรายงานการใช้ห้อง (TLTC-MO-034)',
+      html: `
+        <div class="text-left font-sans text-sm space-y-3">
+          <div>
+            <label class="text-slate-750 font-bold text-xs block mb-1">พิมพ์ระบุชื่อห้อง / พื้นที่ห้องปฏิบัติการที่เข้าใช้ *</label>
+            <input id="usage-room-input" type="text" value="${request.room || ''}" class="w-full p-2 border border-slate-300 rounded font-sans text-sm focus:outline-emerald-500" placeholder="ระบุชื่อห้องเรียน/ห้องปฏิบัติการ เช่น Practical Area in Hangar" />
+          </div>
+          <div>
+            <label class="text-slate-750 font-bold text-xs block mb-1">รายงานการใช้ห้องและสิ่งที่ต้องการพัฒนา/ปรับปรุง *</label>
+            <textarea id="usage-report-input" class="w-full h-24 p-2 border border-slate-300 rounded font-sans text-xs focus:outline-emerald-500" placeholder="เช่น เพิ่มจำนวนปลั๊กไฟในห้องเรียน, เพิ่มความสว่าง, ซ่อมบำรุงแอร์ที่เสียงดัง ฯลฯ..."></textarea>
+          </div>
+          <div>
+            <label class="text-slate-755 font-bold text-xs block mb-0.5">ผู้เข้าใช้ห้องลงลายมือชื่อ (กรุณาใช้เมาส์หรือทัชสกรีนเพื่อเซ็น) *</label>
+            <div class="border border-dashed border-slate-300 rounded bg-slate-50 p-2 flex flex-col items-center">
+              <canvas id="usage-sig-canvas" width="360" height="120" style="touch-action: none; background: white; border: 1px solid #cbd5e1; border-radius: 4px; cursor: crosshair;"></canvas>
+              <button type="button" id="usage-sig-clear" class="mt-1.5 text-[10.5px] text-rose-650 font-sans font-bold hover:text-rose-800 transition-colors uppercase">ล้างลายเซ็น (Clear)</button>
+            </div>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'บันทึกข้อมูลและเซ็นชื่อ',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#10b981', // emerald-500
+      cancelButtonColor: '#6b7280', // gray-500
+      focusConfirm: false,
+      didOpen: () => {
+        const canvas = document.getElementById('usage-sig-canvas') as HTMLCanvasElement;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.strokeStyle = '#0000FF'; // Blue signature ink
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        let drawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        const getMousePos = (canvasDom: HTMLCanvasElement, touchOrMouseEvent: any) => {
+          const rect = canvasDom.getBoundingClientRect();
+          const clientX = touchOrMouseEvent.touches ? touchOrMouseEvent.touches[0].clientX : touchOrMouseEvent.clientX;
+          const clientY = touchOrMouseEvent.touches ? touchOrMouseEvent.touches[0].clientY : touchOrMouseEvent.clientY;
+          return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+          };
+        };
+
+        const startDrawing = (e: any) => {
+          drawing = true;
+          const pos = getMousePos(canvas, e);
+          lastX = pos.x;
+          lastY = pos.y;
+        };
+
+        const draw = (e: any) => {
+          if (!drawing) return;
+          e.preventDefault();
+          const pos = getMousePos(canvas, e);
+          ctx.beginPath();
+          ctx.moveTo(lastX, lastY);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+          lastX = pos.x;
+          lastY = pos.y;
+        };
+
+        const stopDrawing = () => {
+          drawing = false;
+        };
+
+        // Mouse Events
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        // Touch Events
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing);
+
+        // Clear button
+        const clearBtn = document.getElementById('usage-sig-clear');
+        if (clearBtn) {
+          clearBtn.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          });
+        }
+      },
+      preConfirm: () => {
+        const roomInput = document.getElementById('usage-room-input') as HTMLInputElement;
+        const reportInput = document.getElementById('usage-report-input') as HTMLTextAreaElement;
+        const canvas = document.getElementById('usage-sig-canvas') as HTMLCanvasElement;
+
+        const roomVal = roomInput ? roomInput.value.trim() : '';
+        const reportVal = reportInput ? reportInput.value.trim() : '';
+
+        if (!roomVal) {
+          Swal.showValidationMessage('กรุณากรอกระบุชื่อห้อง');
+          return false;
+        }
+        if (!reportVal) {
+          Swal.showValidationMessage('กรุณากรอกรายงานความต้องการ/สิ่งที่พัฒนา');
+          return false;
+        }
+
+        let sigData = '';
+        if (canvas) {
+          // Check if canvas has any drawn strokes (since we clear with a white rect or transparent)
+          // Simple heuristic: compare with initial transparent data url or just read pixels
+          const ctx = canvas.getContext('2d');
+          const pix = ctx ? ctx.getImageData(0, 0, canvas.width, canvas.height).data : [];
+          let hasContent = false;
+          for (let i = 3; i < pix.length; i += 4) {
+            if (pix[i] > 0) {
+              hasContent = true;
+              break;
+            }
+          }
+          if (!hasContent) {
+            Swal.showValidationMessage('กรุณาเซ็นชื่อรับรองผู้เข้าใช้งานห้องปฏิบัติการ');
+            return false;
+          }
+          sigData = canvas.toDataURL();
+        }
+
+        return {
+          room: roomVal,
+          report: reportVal,
+          signature: sigData
+        };
+      }
+    }).then((result) => {
+      if (result.isConfirmed && onRecordUsage && result.value) {
+        onRecordUsage(request.id, result.value.report, result.value.room, result.value.signature);
+      }
+    });
   };
 
   const [startTime, endTime] = React.useMemo(() => {
@@ -533,7 +686,16 @@ export function RoomRequestDoc({ request, onClose }: RoomRequestDocProps) {
           </div>
         </div>
 
-        <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2">
+        <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 flex-wrap">
+          {onRecordUsage && isRequester && (
+            <button
+              onClick={promptRecordUsage}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer no-print"
+            >
+              <FileText size={14} />
+              <span>บันทึกการใช้ห้อง (รายงานสิ่งที่ต้องการพัฒนา)</span>
+            </button>
+          )}
           <button
             onClick={handlePrint}
             className="flex items-center gap-2 bg-neutral-950 hover:bg-neutral-800 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-colors cursor-pointer"
@@ -661,12 +823,21 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                         {rec.room}
                       </td>
                       {/* Requester Signature & typed name inside parentheses */}
-                      <td className="border border-neutral-950 p-2.5">
-                        <div className="flex flex-col items-center justify-center leading-none text-blue-800 select-none">
-                          <span className="font-serif italic font-black text-[13.5px] -rotate-2">
-                            {rec.requesterName ? rec.requesterName.split(' ')[0] : 'ไซฮัน'}
-                          </span>
-                          <span className="text-[8.5px] text-neutral-500 mt-1 pb-0.5">
+                      <td className="border border-neutral-950 p-1">
+                        <div className="flex flex-col items-center justify-center leading-none text-blue-800">
+                          {rec.requesterSignature ? (
+                            <img 
+                              src={rec.requesterSignature} 
+                              alt="Signature" 
+                              className="max-h-8 max-w-[120px] object-contain mix-blend-multiply" 
+                              referrerPolicy="no-referrer" 
+                            />
+                          ) : (
+                            <span className="font-serif italic font-black text-[13.5px] -rotate-2 select-none">
+                              {rec.requesterName ? rec.requesterName.split(' ')[0] : 'ไซฮัน'}
+                            </span>
+                          )}
+                          <span className="text-[8.5px] text-neutral-500 mt-1.5 pb-0.5">
                             ({rec.requesterName || 'นายไซฮัน ซาราบรรณ'})
                           </span>
                         </div>

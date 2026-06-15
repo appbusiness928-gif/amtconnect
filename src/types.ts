@@ -60,6 +60,7 @@ export interface RoomUsageRecord {
   report: string; // สิ่งที่ต้องการให้พัฒนา
   maintenanceOfficerStatus: 'Acknowledged' | 'Pending'; // แสดงข้อมูลว่ารับทราบหรือยัง
   remarks: string;
+  requesterSignature?: string;
 }
 
 export interface Equipment {

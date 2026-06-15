@@ -20,6 +20,21 @@ import {
 import Swal from 'sweetalert2';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
+const getTimeBasedGreeting = () => {
+  const hours = new Date().getHours();
+  if (hours >= 5 && hours < 11) {
+    return 'สวัสดีตอนเช้า';
+  } else if (hours >= 11 && hours < 13) {
+    return 'สวัสดีตอนเที่ยง';
+  } else if (hours >= 13 && hours < 17) {
+    return 'สวัสดีตอนบ่าย';
+  } else if (hours >= 17 && hours < 19) {
+    return 'สวัสดีตอนเย็น';
+  } else {
+    return 'สวัสดีตอนค่ำ';
+  }
+};
+
 export default function App() {
   // Database state
   const [db, setDb] = useState<ReturnType<typeof APIService.getDb>>(APIService.getDb());
@@ -538,8 +553,7 @@ export default function App() {
 
     // Show a modern high-end loading popup to pull latest database entries before verifying credentials
     Swal.fire({
-      title: 'กำลังเข้าสู่ระบบและอัปเดตสิทธิ์...',
-      text: 'กำลังดึงฐานชื่อสิทธิ์ผู้ใช้และคำอนุมัติล่าสุดของท่านจากระบบ Google Sheets',
+      title: 'กำลังเข้าสู่ระบบ',
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
@@ -592,7 +606,7 @@ export default function App() {
     } else {
       Swal.fire({
         icon: 'error',
-        title: 'การเข้าสู่ระบบล้มเหลว',
+        title: 'ไม่สามารถเข้าสู่ระบบได้เนื่องจากรหัสผ่านไม่ถูกต้อง',
         text: res.message,
         confirmButtonColor: '#171717'
       });
@@ -827,6 +841,36 @@ export default function App() {
     updateDb({ ...db, examGrades: nextGr });
   };
 
+  const handleRecordUsageFromDoc = (requestId: string, reportText: string, customRoom?: string, signature?: string) => {
+    const reqObj = db.roomRequests.find(r => r.id === requestId);
+    if (!reqObj) return;
+
+    const freshRecord: RoomUsageRecord = {
+      id: `REC-${Date.now()}`,
+      date: reqObj.date,
+      room: customRoom || reqObj.room,
+      requesterName: reqObj.requesterName,
+      report: reportText,
+      maintenanceOfficerStatus: 'Pending',
+      remarks: `บันทึกเพิ่มเติมจากเอกสาร ${reqObj.id}`,
+      requesterSignature: signature || reqObj.signature
+    };
+
+    updateDb({
+      ...db,
+      roomUsageRecords: [...db.roomUsageRecords, freshRecord]
+    });
+
+    Swal.fire({
+      icon: 'success',
+      title: 'บันทึกรายงานสำเร็จ',
+      text: 'ระบบบันทึกรายงานการใช้ห้อง (สิ่งที่ต้องการพัฒนา) เรียบร้อยแล้ว',
+      confirmButtonColor: '#10b981',
+      timer: 2000,
+      showConfirmButton: false
+    });
+  };
+
   // --- ACTIONS FOR BORROWING ---
   const handleBorrowEquipment = (code: string, qtyNeeded: number, sigImage: string) => {
     if (!currentUser) return;
@@ -981,7 +1025,7 @@ export default function App() {
                 <div className="space-y-2">
                   <h4 className="font-sans font-extrabold text-slate-900 text-base tracking-wide">AMT Connect</h4>
                   <p className="text-[11.5px] text-slate-500 leading-relaxed font-sans max-w-sm">
-                    กำลังประสานการจอง ตารางห้องเรียน ตารางสอบ และคลังอุปกรณ์การบิน...
+                    กำลังอัพเดตข้อมูล
                   </p>
                 </div>
               </div>
@@ -1253,7 +1297,7 @@ export default function App() {
                   {currentUser.role} AREA BOARD
                 </span>
                 <h3 className="font-sans font-extrabold text-slate-900 text-base sm:text-lg mt-1.5">
-                  ยินดีต้อนรับกลับอู่เครื่องบิน, {currentUser.firstName} {currentUser.lastName}
+                  {getTimeBasedGreeting()}, {currentUser.firstName} {currentUser.lastName}
                 </h3>
               </div>
             </div>
@@ -1288,6 +1332,8 @@ export default function App() {
                 onApproveStudentStatusByManager={handleApproveStudentStatusByManager}
                 onViewRequestDoc={(req) => setActiveRequestDoc(req)}
                 onPrintUsageRecords={() => setShowUsageRecordDoc(true)}
+                onApproveUser={handleApproveUser}
+                onRejectUser={handleRejectUser}
               />
             ) : currentUser.role === 'Maintenance Manager' || currentUser.role === 'Maintenance Staff' ? (
               <MaintenancePanel
@@ -1354,6 +1400,8 @@ export default function App() {
         <RoomRequestDoc 
           request={activeRequestDoc} 
           onClose={() => setActiveRequestDoc(null)} 
+          onRecordUsage={handleRecordUsageFromDoc}
+          currentUser={currentUser || undefined}
         />
       )}
 

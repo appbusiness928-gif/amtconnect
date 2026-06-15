@@ -16,6 +16,12 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { getAppOriginForQR } from '../lib/api';
 import { TraceabilityToolsLogDoc } from './Documents';
 
+const TIME_OPTIONS = [
+  "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+  "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"
+];
+
 interface ExamOfficeStudentPanelProps {
   currentUser: User;
   users: User[];
@@ -225,7 +231,8 @@ export default function ExamOfficeStudentPanel({
   const [phone, setPhone] = useState('');
   const [purpose, setPurpose] = useState('');
   const [requestDate, setRequestDate] = useState('');
-  const [timeRange, setTimeRange] = useState('09:00 - 12:00');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('12:00');
   const [selectedRoom, setSelectedRoom] = useState('Practical Area in Hangar');
   const [otherRoomText, setOtherRoomText] = useState('');
   const [requestSignature, setRequestSignature] = useState('');
@@ -345,7 +352,7 @@ export default function ExamOfficeStudentPanel({
     const finalRoom = selectedRoom === 'Other' ? otherRoomText : selectedRoom;
     onSubmitRoomRequest({
       date: requestDate,
-      timeRange,
+      timeRange: `${startTime} - ${endTime}`,
       room: finalRoom,
       requesterId: currentUser.id,
       requesterName: `${currentUser.firstName} ${currentUser.lastName}`,
@@ -426,7 +433,11 @@ export default function ExamOfficeStudentPanel({
       return;
     }
 
-    const studentRoster = users.filter(u => u.role === 'นักศึกษา' && u.batch === gradeBatch);
+    const studentRoster = users.filter(u => {
+      if (u.role !== 'นักศึกษา') return false;
+      const stdBatch = String(u.id || '').substring(0, 2);
+      return stdBatch === gradeBatch;
+    });
     const parsedGrades = studentRoster.map(std => ({
       studentId: std.id,
       studentName: `${std.firstName} ${std.lastName}`,
@@ -523,7 +534,7 @@ export default function ExamOfficeStudentPanel({
         >
           <Calendar size={14} />
           <span>
-            {isOffice || isInstructor ? 'จัดการตารางเรียนและสอน' : isExam ? 'จัดประกาศสอบ & คะแนน' : 'ขอใช้พื้นที่ห้องปฏิบัติ'}
+            {isOffice || isInstructor ? 'จัดการตารางเรียนและสอน' : isExam ? 'จัดประกาศสอบ & คะแนน' : 'ขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง'}
           </span>
         </button>
 
@@ -964,7 +975,7 @@ export default function ExamOfficeStudentPanel({
                     instActionTab === 'room' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-650 hover:text-slate-900'
                   }`}
                 >
-                  เขียนใบร้องขอใช้พื้นที่ห้องปฏิบัติการ (Room Request)
+                  เขียนใบร้องขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง (Room Request)
                 </button>
               </div>
             )}
@@ -1274,7 +1285,11 @@ export default function ExamOfficeStudentPanel({
                     <span className="font-bold block mb-2 text-neutral-600 uppercase text-[10px]">รายชื่อนักเรียนรุ่น {gradeBatch} เพื่อกรอกคะแนน (เปอร์เซ็นต์เต็ม 100)</span>
                     <div className="space-y-2">
                       {users
-                        .filter(u => u.role === 'นักศึกษา' && u.batch === gradeBatch)
+                        .filter(u => {
+                          if (u.role !== 'นักศึกษา') return false;
+                          const stdBatch = String(u.id || '').substring(0, 2);
+                          return stdBatch === gradeBatch;
+                        })
                         .map(std => (
                           <div key={std.id} className="flex justify-between items-center bg-white p-2 border rounded shadow-xs text-xs">
                             <span className="font-bold">{std.id} - {std.firstName} {std.lastName}</span>
@@ -1371,17 +1386,35 @@ export default function ExamOfficeStudentPanel({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลากรอบชั่วโมง *</label>
-                    <select
-                      id="reqTimeRangeSelect"
-                      value={timeRange}
-                      onChange={(e) => setTimeRange(e.target.value)}
-                      className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-medium"
-                    >
-                      <option value="09:00 - 12:00">09:00 - 12:00</option>
-                      <option value="13:00 - 16:30">13:00 - 16:30</option>
-                      <option value="09:00 - 16:30">09:00 - 16:30</option>
-                    </select>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาการจอง *</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[8px] font-bold text-neutral-500 mb-0.5">ตั้งแต่เวลา</label>
+                        <select
+                          id="reqStartTimeSelect"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="w-full border border-neutral-300 px-2 py-1.5 rounded bg-white text-xs font-medium"
+                        >
+                          {TIME_OPTIONS.map(time => (
+                            <option key={time} value={time}>{time}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[8px] font-bold text-neutral-500 mb-0.5">ถึงเวลา</label>
+                        <select
+                          id="reqEndTimeSelect"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="w-full border border-neutral-300 px-2 py-1.5 rounded bg-white text-xs font-medium"
+                        >
+                          {TIME_OPTIONS.map(time => (
+                            <option key={time} value={time}>{time}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1673,7 +1706,13 @@ export default function ExamOfficeStudentPanel({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {users
-                .filter(u => isStudent ? (u.role === 'นักศึกษา' && u.batch === studentBatch) : (u.role !== 'นักศึกษา' && u.role !== 'Admin'))
+                .filter(u => {
+                  if (isStudent) {
+                    return u.role === 'นักศึกษา' && String(u.id || '').substring(0, 2) === studentBatch;
+                  } else {
+                    return u.role !== 'นักศึกษา' && u.role !== 'Admin';
+                  }
+                })
                 .map((member) => (
                   <div key={member.id} className="flex gap-4 p-3 border border-neutral-300 rounded bg-white items-center shadow-xs">
                     <img src={member.photoUrl} alt="member" className="w-12 h-14 object-cover rounded border" referrerPolicy="no-referrer" />
@@ -1685,7 +1724,13 @@ export default function ExamOfficeStudentPanel({
                   </div>
                 ))}
             </div>
-            {users.filter(u => isStudent ? (u.role === 'นักศึกษา' && u.batch === studentBatch) : (u.role !== 'นักศึกษา' && u.role !== 'Admin')).length === 0 && (
+            {users.filter(u => {
+              if (isStudent) {
+                return u.role === 'นักศึกษา' && String(u.id || '').substring(0, 2) === studentBatch;
+              } else {
+                return u.role !== 'นักศึกษา' && u.role !== 'Admin';
+              }
+            }).length === 0 && (
               <div className="text-center py-10 text-neutral-500 italic">
                 ไม่พบข้อมูลทำเนียบรายชื่อในระบบ ณ ขณะนี้
               </div>
@@ -1710,7 +1755,7 @@ export default function ExamOfficeStudentPanel({
                 <div className="text-center py-12 border border-dashed border-neutral-300 rounded-xl bg-neutral-50 p-6 flex flex-col items-center justify-center">
                   <BookOpen size={28} className="text-neutral-300 mb-2" />
                   <p className="font-sans text-xs font-bold text-neutral-400">ยังไม่พบประวัติการเขียนใบขอจองใช้พื้นที่</p>
-                  <p className="font-sans text-[10.5px] text-neutral-400 mt-1">ท่านสามารถทำการสร้างใบขออนุมัติใหม่ได้ที่แถบ "ขอใช้พื้นที่ห้องปฏิบัติ"</p>
+                  <p className="font-sans text-[10.5px] text-neutral-400 mt-1">ท่านสามารถทำการสร้างใบขออนุมัติใหม่ได้ที่แถบ "ขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง"</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-neutral-200 rounded-lg">

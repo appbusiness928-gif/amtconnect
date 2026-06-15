@@ -14,6 +14,12 @@ import Swal from 'sweetalert2';
 import { TraceabilityToolsLogDoc } from './Documents';
 import { compressImage } from '../lib/api';
 
+const TIME_OPTIONS = [
+  "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+  "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"
+];
+
 interface TrainingManagerPanelProps {
   currentUser: User;
   users: User[];
@@ -27,6 +33,8 @@ interface TrainingManagerPanelProps {
   onApproveStudentStatusByManager?: (studentId: string) => void;
   onViewRequestDoc: (req: RoomRequest) => void;
   onPrintUsageRecords?: () => void;
+  onApproveUser?: (userId: string) => void;
+  onRejectUser?: (userId: string) => void;
 }
 
 export default function TrainingManagerPanel({
@@ -41,10 +49,12 @@ export default function TrainingManagerPanel({
   onUpdateStudentStatusByStaff,
   onApproveStudentStatusByManager,
   onViewRequestDoc,
-  onPrintUsageRecords
+  onPrintUsageRecords,
+  onApproveUser,
+  onRejectUser
 }: TrainingManagerPanelProps) {
   const isManager = currentUser.role === 'Training Manager';
-  const [activeButtonTab, setActiveButtonTab] = useState<'profile' | 'request' | 'schedules' | 'status' | 'docs'>('profile');
+  const [activeButtonTab, setActiveButtonTab] = useState<'profile' | 'request' | 'schedules' | 'status' | 'docs' | 'approvals'>('profile');
   const [showTraceabilityDoc, setShowTraceabilityDoc] = useState(false);
 
   // Input states for room request
@@ -52,7 +62,8 @@ export default function TrainingManagerPanel({
   const [phone, setPhone] = useState('');
   const [purpose, setPurpose] = useState('');
   const [requestDate, setRequestDate] = useState('');
-  const [timeRange, setTimeRange] = useState('09:00 - 12:00');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('12:00');
   const [selectedRoom, setSelectedRoom] = useState('Practical Area in Hangar');
   const [otherRoomText, setOtherRoomText] = useState('');
   const [requestSignature, setRequestSignature] = useState('');
@@ -105,7 +116,7 @@ export default function TrainingManagerPanel({
 
     onSubmitRoomRequest({
       date: requestDate,
-      timeRange,
+      timeRange: `${startTime} - ${endTime}`,
       room: finalRoom,
       requesterId: currentUser.id,
       requesterName: `${currentUser.firstName} ${currentUser.lastName}`,
@@ -167,7 +178,7 @@ export default function TrainingManagerPanel({
           }`}
         >
           <Calendar size={14} />
-          <span>ขออนุญาตใช้ห้องเรือนการช่าง</span>
+          <span>ขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง</span>
         </button>
 
         <button
@@ -201,6 +212,22 @@ export default function TrainingManagerPanel({
         >
           <ClipboardList size={14} />
           <span>{isManager ? 'เอกสารใบคลังคำร้องทั้งหมด' : 'เอกสารใบคำร้องของฉัน'}</span>
+        </button>
+
+        <button
+          id="tmApprovalsBtn"
+          onClick={() => setActiveButtonTab('approvals')}
+          className={`w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeButtonTab === 'approvals' ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+          }`}
+        >
+          <ShieldAlert size={14} />
+          <span>อนุมัติสิทธิ์ผู้ใช้งาน</span>
+          {users.filter(u => u.status === 'Pending').length > 0 && (
+            <span className="ml-auto bg-rose-600 text-white font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded-full animate-pulse">
+              {users.filter(u => u.status === 'Pending').length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -386,18 +413,35 @@ export default function TrainingManagerPanel({
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลากรอบชั่วโมงการจอง *</label>
-                <select
-                  id="reqTimeSelect"
-                  value={timeRange}
-                  onChange={(e) => setTimeRange(e.target.value)}
-                  className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-semibold"
-                >
-                  <option value="09:00 - 12:00">09:00 - 12:00 (เช้า)</option>
-                  <option value="13:00 - 16:30">13:00 - 16:30 (บ่าย)</option>
-                  <option value="09:00 - 16:30">09:00 - 16:30 (เต็มวัน)</option>
-                  <option value="17:00 - 20:00">17:00 - 20:00 (ค่ำชดเชย)</option>
-                </select>
+                <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาการจอง (ชั่วโมง) *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[8px] font-bold text-neutral-450 mb-0.5">ตั้งแต่เวลา</label>
+                    <select
+                      id="reqStartTimeSelect"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-semibold"
+                    >
+                      {TIME_OPTIONS.map(time => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[8px] font-bold text-neutral-450 mb-0.5">ถึงเวลา</label>
+                    <select
+                      id="reqEndTimeSelect"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-semibold"
+                    >
+                      {TIME_OPTIONS.map(time => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -815,6 +859,64 @@ export default function TrainingManagerPanel({
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* TAB 6: PENDING USER APPROVALS */}
+        {activeButtonTab === 'approvals' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="border-b pb-2">
+              <h3 className="font-sans font-extrabold text-sm text-neutral-900 flex items-center gap-2">
+                <ShieldAlert className="text-neutral-900" size={16} />
+                <span>คำขอพิจารณาอนุมัติสิทธิ์ผู้ใช้งานเข้าสู่ระบบ (Pending Approvals)</span>
+              </h3>
+              <p className="text-[11px] text-neutral-500 mt-1">
+                รายชื่อบุคคลหรือผู้ใช้งานที่สมัครเข้าสู่ระบบใหม่และอยู่ระหว่างรอเจ้าหน้าที่ฝ่ายฝึกอบรมอนุมัติสิทธิ์เพื่อเปิดสิทธิ์การใช้งาน
+              </p>
+            </div>
+
+            {users.filter(u => u.status === 'Pending').length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {users.filter(u => u.status === 'Pending').map(pUser => (
+                  <div key={pUser.id} className="bg-neutral-50 border border-neutral-200 p-4 rounded-lg flex items-center justify-between gap-3 shadow-3xs hover:border-neutral-350 transition-all">
+                    <div className="flex items-center gap-3">
+                      <img src={pUser.photoUrl} alt="avatar" className="w-12 h-14 object-cover border border-neutral-300 rounded shadow-3xs" referrerPolicy="no-referrer" />
+                      <div>
+                        <p className="font-sans font-bold text-neutral-950 text-xs sm:text-sm">{pUser.firstName} {pUser.lastName}</p>
+                        <p className="text-[10px] font-mono font-bold text-neutral-500 uppercase mt-0.5">
+                          ตำแหน่ง: <span className="text-indigo-600 font-sans">{pUser.role}</span> {pUser.role === 'นักศึกษา' ? `| รุ่น ${String(pUser.id || '').substring(0, 2)}` : (pUser.batch ? `| รุ่น ${pUser.batch}` : '')}
+                        </p>
+                        <p className="text-[10px] text-neutral-550 font-mono mt-0.5">รหัส: {pUser.id}</p>
+                        <p className="text-[9px] text-neutral-400 truncate mt-0.5">{pUser.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5 shrink-0 text-right">
+                      <div className="flex gap-1.5 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => onRejectUser && onRejectUser(pUser.id)}
+                          className="p-1 px-2.5 border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded text-[10px] font-sans font-bold transition-colors cursor-pointer"
+                        >
+                          ปฏิเสธ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onApproveUser && onApproveUser(pUser.id)}
+                          className="p-1 px-3 bg-emerald-600 text-white hover:bg-emerald-700 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                        >
+                          อนุมัติสิทธิ์
+                        </button>
+                      </div>
+                      <span className="text-[8px] text-emerald-600 font-sans font-bold">✓ อนุญาตเชื่อมต่อระบบ</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 border border-dashed border-neutral-200 rounded-lg bg-neutral-50/50">
+                <p className="text-neutral-400 italic text-[11px] font-sans">ไม่มีคำขออนุมัติสิทธิ์ค้างอยู่ในสารบบ ณ ขณะนี้</p>
+              </div>
+            )}
           </div>
         )}
 
