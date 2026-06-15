@@ -138,7 +138,7 @@ export default function ExamOfficeStudentPanel({
   };
 
   // State Tabs
-  const [activeTab, setActiveTab] = useState<'profile' | 'action' | 'schedule' | 'borrow' | 'roster'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'action' | 'schedule' | 'borrow' | 'roster' | 'requests'>('profile');
 
   // Instructor Action Tab Switcher (Schedule management vs Lab requests)
   const [instActionTab, setInstActionTab] = useState<'schedule' | 'room'>('schedule');
@@ -549,6 +549,17 @@ export default function ExamOfficeStudentPanel({
         >
           <Users size={14} />
           <span>ทำเนียบเพื่องร่วมรุ่น / บุคลากร</span>
+        </button>
+
+        <button
+          id="seoRequestsBtn"
+          onClick={() => setActiveTab('requests')}
+          className={`w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'requests' ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+          }`}
+        >
+          <BookOpen size={14} />
+          <span>เอกสารคำขอของฉัน</span>
         </button>
       </div>
 
@@ -1679,6 +1690,96 @@ export default function ExamOfficeStudentPanel({
                 ไม่พบข้อมูลทำเนียบรายชื่อในระบบ ณ ขณะนี้
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 5: MY REQUESTS (เอกสารคำขอของฉัน) */}
+        {activeTab === 'requests' && (
+          <div className="space-y-6 animate-fade-in text-slate-800">
+            <div className="border-b pb-2">
+              <h3 className="font-sans font-extrabold text-sm text-neutral-900 uppercase">
+                เอกสารคำขอและใบอนุมัติใช้งานของฉัน (My Documents & PDF)
+              </h3>
+              <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+                รวมใบคำขอใช้พื้นที่ปฏิบัติการ (TLTC-MO-033) ทั้งหมดของท่าน สามารถแสดงตัวอย่างไฟล์ PDF เพื่อพริ้นท์หรือยื่นตรวจสอบ
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {roomRequests.filter(req => req.requesterId === currentUser.id).length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-neutral-300 rounded-xl bg-neutral-50 p-6 flex flex-col items-center justify-center">
+                  <BookOpen size={28} className="text-neutral-300 mb-2" />
+                  <p className="font-sans text-xs font-bold text-neutral-400">ยังไม่พบประวัติการเขียนใบขอจองใช้พื้นที่</p>
+                  <p className="font-sans text-[10.5px] text-neutral-400 mt-1">ท่านสามารถทำการสร้างใบขออนุมัติใหม่ได้ที่แถบ "ขอใช้พื้นที่ห้องปฏิบัติ"</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-neutral-200 rounded-lg">
+                  <table className="w-full text-left border-collapse bg-white">
+                    <thead>
+                      <tr className="bg-neutral-50 border-b border-neutral-200 text-[10px] font-bold text-neutral-600 uppercase font-sans">
+                        <th className="py-2.5 px-3">เลขที่เอกสาร / ห้องพื้นที่</th>
+                        <th className="py-2.5 px-3">วันที่จอง</th>
+                        <th className="py-2.5 px-3">เวลากรอบชั่วโมง</th>
+                        <th className="py-2.5 px-3">วัตถุประสงค์</th>
+                        <th className="py-2.5 px-3 text-center">สถานะการอนุมัติ</th>
+                        <th className="py-2.5 px-3 text-right">พิมพ์/เอกสาร PDF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {roomRequests
+                        .filter(req => req.requesterId === currentUser.id)
+                        .map((req) => {
+                          const docNumber = `TLTC-MO-033-${String(req.id || '').substring(0, 5).toUpperCase()}`;
+                          const isApproved = req.maintenanceApproved === 'Approved';
+                          const isRejected = req.maintenanceApproved === 'Rejected';
+                          
+                          return (
+                            <tr key={req.id} className="border-b border-neutral-100 hover:bg-neutral-50/50 text-[11px] font-sans">
+                              <td className="py-3 px-3">
+                                <span className="font-mono text-[9px] font-extrabold bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded border border-neutral-200 block w-fit mb-1">
+                                  {docNumber}
+                                </span>
+                                <span className="font-bold text-neutral-900">{req.room}</span>
+                              </td>
+                              <td className="py-3 px-3 font-mono font-bold text-neutral-500">{req.date}</td>
+                              <td className="py-3 px-3 text-neutral-500">{req.timeRange}</td>
+                              <td className="py-3 px-3 max-w-[150px] truncate" title={req.purpose}>{req.purpose}</td>
+                              <td className="py-3 px-3 text-center">
+                                {isApproved ? (
+                                  <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                                    อนุมัติใช้ห้องแล้ว
+                                  </span>
+                                ) : isRejected ? (
+                                  <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+                                    ปฏิเสธอนุมัติ
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                                    รอตรวจสอบ (Pending)
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => onViewRequestDoc(req)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] rounded transition-all cursor-pointer active:scale-95 shadow-3xs"
+                                >
+                                  <Printer size={10} />
+                                  <span>แสดงเอกสาร PDF</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

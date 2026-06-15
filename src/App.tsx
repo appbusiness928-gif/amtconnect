@@ -14,7 +14,7 @@ import ExamOfficeStudentPanel from './components/ExamOfficeStudentPanel';
 import { StudentIdCard, RoomRequestDoc, RoomUsageRecordDoc } from './components/Documents';
 import { 
   LogIn, LogOut, ShieldAlert, Key, Users, BookOpen, 
-  Settings, RefreshCw, Mail, CheckCircle, Info, HardHat,
+  Settings, RefreshCw, Mail, CheckCircle, Info, Plane, Wrench,
   Camera, QrCode
 } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -890,8 +890,20 @@ export default function App() {
           
           {/* Logo & title brand */}
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-800 text-slate-100 rounded-lg border border-slate-700 flex items-center justify-center font-mono font-extrabold uppercase select-none shadow-sm animate-pulse">
-              <HardHat size={24} className="text-slate-200" />
+            <div className="relative flex items-center justify-center w-12 h-12 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-850 text-slate-100 rounded-xl border border-slate-700/60 shadow-[0_4px_20px_rgba(0,0,0,0.3)] select-none transition-all duration-300 hover:border-sky-500/50 hover:shadow-[0_0_15px_rgba(14,165,233,0.35)] group">
+              {/* Glowing ring/circle behind */}
+              <div className="absolute inset-0.5 rounded-[10px] border border-dashed border-slate-700/40 group-hover:border-sky-500/30 transition-colors duration-300" />
+              
+              {/* Inner icons container */}
+              <div className="relative flex items-center justify-center w-8 h-8">
+                {/* Airplane flying upwards */}
+                <Plane size={22} className="text-slate-100 transform -rotate-45 transition-transform duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                
+                {/* Crossing Wrench in bottom right with solid badge */}
+                <div className="absolute -bottom-1 -right-1.5 bg-sky-500 text-white p-1 rounded-lg border border-slate-900 shadow-[0_2px_8px_rgba(14,165,233,0.3)] transform transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110">
+                  <Wrench size={10} className="text-white" />
+                </div>
+              </div>
             </div>
             <div>
               <h1 className="font-sans font-extrabold text-xl sm:text-2xl uppercase tracking-widest flex items-center gap-2">
@@ -907,18 +919,25 @@ export default function App() {
           <div className="flex items-center gap-4 text-xs font-sans">
             
             {/* Real-time Google Sheets Auto-Sync Status Badge */}
-            <div className={`px-2.5 py-1 rounded-md text-[10px] font-sans font-extrabold flex items-center gap-1.5 transition-all duration-300 border ${
-              syncStatus.isSyncing
-                ? 'bg-amber-950/40 text-amber-300 border-amber-800'
-                : syncStatus.lastSyncSuccess
-                ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800'
-                : 'bg-slate-800/50 text-slate-400 border-slate-700/60'
-            }`}>
-              <RefreshCw size={11} className={`${syncStatus.isSyncing ? 'animate-spin text-amber-400' : 'text-emerald-400'}`} />
-              <span>
-                {syncStatus.isSyncing 
-                  ? 'กำลังบันทึกลง Google Sheets...' 
-                  : '✓ ซิงค์ Google Sheets อัตโนมัติ'}
+            <div 
+              className="flex items-center justify-center p-2 rounded-full bg-slate-900/40 border border-slate-800/60"
+              title={
+                syncStatus.isSyncing 
+                  ? 'กำลังบันทึกลง Google Sheets... (Syncing)' 
+                  : 'ซิงค์ Google Sheets อัตโนมัติสำเร็จ (Synced)'
+              }
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                {syncStatus.isSyncing && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  syncStatus.isSyncing
+                    ? 'bg-amber-500'
+                    : syncStatus.lastSyncSuccess
+                    ? 'bg-emerald-500'
+                    : 'bg-slate-500'
+                }`}></span>
               </span>
             </div>
 
