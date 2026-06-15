@@ -108,7 +108,10 @@ export function compressImage(base64Str: string, maxWidth: number = 130, maxHeig
         }
         ctx.drawImage(img, 0, 0, width, height);
         // Use quality parameter for direct size reduction
-        const compressed = canvas.toDataURL('image/jpeg', quality);
+        // If the original was PNG (e.g. transparent signature drawings), resolve as PNG to keep transparency
+        const isPng = base64Str.startsWith('data:image/png');
+        const mimeType = isPng ? 'image/png' : 'image/jpeg';
+        const compressed = canvas.toDataURL(mimeType, isPng ? undefined : quality);
         resolve(compressed);
       } catch (err) {
         console.warn('Image compression failed, using original', err);
