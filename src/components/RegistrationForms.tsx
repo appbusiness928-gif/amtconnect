@@ -58,7 +58,7 @@ export default function RegistrationForms({ onRegisterSuccess, onCancel, existin
     if (!signature) return 'กรุณาเขียนลายเซ็นรับรองข้อมูลของคุณ';
     
     // Check duplication
-    const duplicate = existingUsers.some(u => u.id.toLowerCase().trim() === id.toLowerCase().trim());
+    const duplicate = existingUsers.some(u => String(u.id || '').toLowerCase().trim() === id.toLowerCase().trim());
     if (duplicate) {
       return 'รหัสประจำตัวนี้เคยลงทะเบียนไว้ในระบบแล้ว กรุณาใช้รหัสส่วนตัวอื่นของคุณ';
     }
