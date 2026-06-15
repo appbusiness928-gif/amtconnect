@@ -134,7 +134,7 @@ export default function TrainingManagerPanel({
     }
     setFoundStudent(student);
     // Find class schedule matching student's batch (i.e. model prefix or cohort match)
-    const batchPrefix = student.batch || student.id.substring(0, 2);
+    const batchPrefix = student.batch || String(student.id || '').substring(0, 2);
     const mathcingSchedules = classSchedules.filter(s => s.batch === batchPrefix);
     setStudentSchedules(mathcingSchedules);
   };
@@ -553,7 +553,7 @@ export default function TrainingManagerPanel({
                 </thead>
                 <tbody>
                   {users
-                    .filter(u => u.role === 'นักศึกษา' && u.id.startsWith(cohortBatch))
+                    .filter(u => u.role === 'นักศึกษา' && String(u.id || '').startsWith(cohortBatch))
                     .map((student) => (
                       <tr key={student.id} className="border-b border-neutral-150 hover:bg-neutral-50 text-[11px]">
                         <td className="py-2 px-2">
@@ -598,7 +598,7 @@ export default function TrainingManagerPanel({
                         )}
                       </tr>
                     ))}
-                  {users.filter(u => u.role === 'นักศึกษา' && u.id.startsWith(cohortBatch)).length === 0 && (
+                  {users.filter(u => u.role === 'นักศึกษา' && String(u.id || '').startsWith(cohortBatch)).length === 0 && (
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-neutral-450 italic">
                         ไม่พบข้อมูลนักศึกษารุ่น {cohortBatch} ค้าอยู่ในสารบบ

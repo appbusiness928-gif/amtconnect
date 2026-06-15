@@ -95,7 +95,7 @@ export default function ExamOfficeStudentPanel({
   const isOffice = currentUser.role === 'Office Manager' || currentUser.role === 'Office Staff';
   const isExam = currentUser.role === 'Examination Manager' || currentUser.role === 'Examination Staff';
 
-  const studentBatch = currentUser.batch || (currentUser.id && currentUser.id.length >= 2 && !isNaN(Number(currentUser.id.substring(0, 2))) ? currentUser.id.substring(0, 2) : '67');
+  const studentBatch = currentUser.batch || (currentUser.id && String(currentUser.id).length >= 2 && !isNaN(Number(String(currentUser.id).substring(0, 2))) ? String(currentUser.id).substring(0, 2) : '67');
 
   const getThaiDayOfWeek = (d: Date): string => {
     const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'];

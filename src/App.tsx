@@ -960,21 +960,10 @@ export default function App() {
                 </div>
                 
                 <div className="space-y-2">
-                  <h4 className="font-sans font-extrabold text-slate-800 text-sm">กำลังเชื่อมต่อและดึงข้อมูลจาก Google Sheets...</h4>
+                  <h4 className="font-sans font-extrabold text-slate-900 text-base tracking-wide">AMT Connect</h4>
                   <p className="text-[11.5px] text-slate-500 leading-relaxed font-sans max-w-sm">
-                    ระบบกำลังปรับประสานประวัติการจอง ตารางห้องเรียน ตารางสอบ รายการเบิกอุปกรณ์ช่างอากาศยานล่าสุดกับคลาวด์สเปรดชีตวิทยาลัยเทคนิคถลางโดยอัตโนมัติ
+                    กำลังประสานการจอง ตารางห้องเรียน ตารางสอบ และคลังอุปกรณ์การบิน...
                   </p>
-                </div>
-
-                <div className="w-full border-t border-slate-100 pt-4 flex flex-col space-y-3">
-                  <span className="text-[10px] text-slate-400 font-mono">SYSTEM: AUTOMATIC CLOUD SYNC ACTIVE</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsInitialLoading(false)}
-                    className="mx-auto px-4 py-2 hover:bg-slate-50 border border-slate-250 text-slate-600 rounded-lg text-[10px] font-sans font-bold cursor-pointer transition-all active:scale-95"
-                  >
-                    ข้ามขั้นตอนและเข้าสู่ระบบด้วยแคชเครื่องเดิม (Offline/Cached)
-                  </button>
                 </div>
               </div>
             ) : (

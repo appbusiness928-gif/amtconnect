@@ -372,15 +372,18 @@ export const APIService = {
 
     // Check custom credentials based on ID only
     const foundUser = db.users.find(
-      u => u.id.toLowerCase() === cleanId.toLowerCase()
+      u => String(u.id || '').toLowerCase() === cleanId.toLowerCase()
     );
 
     if (!foundUser) {
       return { success: false, message: 'ไม่พบข้อมูลผู้ใช้ หรือรหัสประจำตัวไม่ถูกต้อง' };
     }
 
-    // If the user has a registered password, enforce password matching
-    if (foundUser.password && foundUser.password !== passwordHash) {
+    // If the user has a registered password, enforce password matching (cast to string and trim to support numeric representations or accidental whitespaces)
+    const storedPassStr = foundUser.password !== undefined && foundUser.password !== null ? String(foundUser.password).trim() : '';
+    const inputPassStr = passwordHash !== undefined && passwordHash !== null ? String(passwordHash).trim() : '';
+
+    if (storedPassStr && storedPassStr !== inputPassStr) {
       return { success: false, message: 'รหัสผ่านสำหรับการช่างไม่ถูกต้อง' };
     }
 

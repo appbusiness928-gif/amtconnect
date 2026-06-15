@@ -216,7 +216,7 @@ export default function AdminPanel({
   const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanId = verifySearchId.trim();
-    const found = users.find(u => u.id === cleanId || u.id.toLowerCase() === cleanId.toLowerCase());
+    const found = users.find(u => String(u.id || '') === cleanId || String(u.id || '').toLowerCase() === cleanId.toLowerCase());
     if (found) {
       setVerifyUser(found);
       Swal.fire({
