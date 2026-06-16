@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { User, UserRole } from '../types';
 import SignaturePad from './SignaturePad';
 import { UserPlus, Image as ImageIcon, Key, Mail, UserCheck, ShieldAlert } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { alerts as Swal } from '../lib/alerts';
 
 interface RegistrationFormsProps {
   onRegisterSuccess: (user: Omit<User, 'status' | 'createdAt'>) => void;

@@ -7,7 +7,7 @@ import React from 'react';
 import { Printer, X, Award, ShieldAlert, CheckCircle, FileText } from 'lucide-react';
 import { User, RoomRequest, RoomUsageRecord, BorrowRecord } from '../types';
 import { getAppOriginForQR, APIService, syncWithGoogleSheets } from '../lib/api';
-import Swal from 'sweetalert2';
+import { alerts as Swal } from '../lib/alerts';
 
 export function ThalangLogo({ className = "w-16 h-16" }: { className?: string }) {
   return (
@@ -202,13 +202,15 @@ export function getMaintenanceManagerInfo() {
   try {
     const db = APIService.getDb();
     if (!db || !db.users) return null;
-    const manager = db.users.find(u => u.role === 'Maintenance Manager' && u.status === 'Active')
-                 || db.users.find(u => u.role === 'Maintenance Manager');
+    const manager = db.users.find(u => u && u.role === 'Maintenance Manager' && u.status === 'Active')
+                 || db.users.find(u => u && u.role === 'Maintenance Manager');
     if (manager) {
-      const pfx = (manager.firstName.startsWith('นาย') || manager.firstName.startsWith('นาง') || manager.firstName.startsWith('นางสาว') || manager.firstName.startsWith('Mr') || manager.firstName.startsWith('Ms')) ? '' : 'นาย';
+      const fName = manager.firstName || '';
+      const lName = manager.lastName || '';
+      const pfx = (fName.startsWith('นาย') || fName.startsWith('นาง') || fName.startsWith('นางสาว') || fName.startsWith('Mr') || fName.startsWith('Ms')) ? '' : 'นาย';
       return {
-        fullName: `${pfx}${manager.firstName} ${manager.lastName}`,
-        shortName: manager.firstName,
+        fullName: `${pfx}${fName} ${lName}`.trim(),
+        shortName: fName,
         signature: manager.signature
       };
     }

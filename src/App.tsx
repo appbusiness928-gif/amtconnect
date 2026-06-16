@@ -17,7 +17,7 @@ import {
   Settings, RefreshCw, Mail, CheckCircle, Info, Plane, Wrench,
   Camera, QrCode
 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { alerts as Swal } from './lib/alerts';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 const getTimeBasedGreeting = () => {

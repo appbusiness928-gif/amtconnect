@@ -10,7 +10,7 @@ import {
   Plus, Printer, Key, Eye, ToggleLeft, ToggleRight, Settings, Info,
   Camera, QrCode, Search, Award, BookOpen, RefreshCw, Wrench
 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { alerts as Swal } from '../lib/alerts';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { 
   getAppOriginForQR,
@@ -269,10 +269,10 @@ export default function AdminPanel({
   const batches = [
     'All', 
     ...Array.from(new Set(
-      users
-        .filter(u => u.role === 'นักศึกษา')
+      (users || [])
+        .filter(u => u && u.role === 'นักศึกษา')
         .map(u => String(u.id || '').substring(0, 2))
-        .filter(b => b.length === 2 && !isNaN(Number(b)))
+        .filter(b => b && b.length === 2 && !isNaN(Number(b)))
     )).sort()
   ];
 

@@ -11,7 +11,7 @@ import {
   Wrench, Camera, HelpCircle, Eye, Printer, ShieldCheck, RefreshCw,
   ChevronLeft, ChevronRight
 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { alerts as Swal } from '../lib/alerts';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { getAppOriginForQR } from '../lib/api';
 import { TraceabilityToolsLogDoc } from './Documents';
@@ -108,10 +108,10 @@ export default function ExamOfficeStudentPanel({
   // Dynamically get cohorts based on existing student batches in the system
   const availableBatches = Array.from(
     new Set(
-      users
-        .filter((u) => u.role === 'นักศึกษา')
+      (users || [])
+        .filter((u) => u && u.role === 'นักศึกษา')
         .map((u) => u.batch || String(u.id || '').substring(0, 2))
-        .filter((b) => b && b.trim().length > 0)
+        .filter((b) => b && typeof b === 'string' && b.trim().length > 0)
     )
   ).sort();
   const dbBatches = availableBatches.length > 0 ? availableBatches : ['65', '66', '67', '68'];

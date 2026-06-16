@@ -13,7 +13,7 @@ import {
   Settings, Key, AlertTriangle, ShieldCheck, Printer, Calendar,
   User as UserIcon, Eye, FileText
 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { alerts as Swal } from '../lib/alerts';
 
 interface MaintenancePanelProps {
   currentUser: User;
