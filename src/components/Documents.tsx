@@ -198,7 +198,28 @@ function formatThaiDate(dateStr: string): string {
   return dateStr;
 }
 
+export function getMaintenanceManagerInfo() {
+  try {
+    const db = APIService.getDb();
+    if (!db || !db.users) return null;
+    const manager = db.users.find(u => u.role === 'Maintenance Manager' && u.status === 'Active')
+                 || db.users.find(u => u.role === 'Maintenance Manager');
+    if (manager) {
+      const pfx = (manager.firstName.startsWith('นาย') || manager.firstName.startsWith('นาง') || manager.firstName.startsWith('นางสาว') || manager.firstName.startsWith('Mr') || manager.firstName.startsWith('Ms')) ? '' : 'นาย';
+      return {
+        fullName: `${pfx}${manager.firstName} ${manager.lastName}`,
+        shortName: manager.firstName,
+        signature: manager.signature
+      };
+    }
+  } catch (err) {
+    console.warn('Error reading maintenance manager from DB:', err);
+  }
+  return null;
+}
+
 export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }: RoomRequestDocProps) {
+  const managerInfo = getMaintenanceManagerInfo();
   const isRequester = currentUser && (
     currentUser.id === request.requesterId || 
     `${currentUser.firstName} ${currentUser.lastName}` === request.requesterName
@@ -649,7 +670,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                           />
                         ) : (
                           <div className="absolute text-blue-800 font-serif italic text-[16px] select-none font-black scale-110 -rotate-3 tracking-widest leading-none mt-2">
-                            {request.maintenanceOfficerName ? request.maintenanceOfficerName.split(' ')[0] : 'อิทธิพงศ์'}
+                            {request.maintenanceOfficerName ? request.maintenanceOfficerName.split(' ')[0] : (managerInfo ? managerInfo.shortName : '')}
                           </div>
                         )
                       ) : (
@@ -662,7 +683,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                   <div className="flex items-baseline w-full justify-center">
                     <span>( </span>
                     <span className="flex-1 text-blue-850 font-bold px-1 font-serif text-[13.5px] italic">
-                      {request.maintenanceOfficerName || 'นายอิทธิพงศ์ สังวรณ์'}
+                      {request.maintenanceOfficerName || (managerInfo ? managerInfo.fullName : '')}
                     </span>
                     <span> )</span>
                   </div>
@@ -716,6 +737,7 @@ interface RoomUsageRecordDocProps {
 }
 
 export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: RoomUsageRecordDocProps) {
+  const managerInfo = getMaintenanceManagerInfo();
   const handlePrint = () => {
     syncWithGoogleSheets(APIService.getDb()).catch(() => {});
     window.print();
@@ -848,14 +870,20 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                       </td>
                       {/* Maintenance Officer Signature status */}
                       <td className="border border-neutral-950 p-2.5">
-                        <div className="flex flex-col items-center justify-center leading-none text-blue-800 select-none">
-                          <span className="font-serif italic font-black text-[14px] -rotate-3 text-blue-800 scale-105 tracking-wider">
-                            อิทธิพงศ์
-                          </span>
-                          <span className="text-[8.5px] text-neutral-500 mt-1 pb-0.5">
-                            (M.O. ตรวจทานเรียบร้อย)
-                          </span>
-                        </div>
+                        {managerInfo ? (
+                          <div className="flex flex-col items-center justify-center leading-none text-blue-800 select-none">
+                            <span className="font-serif italic font-black text-[14px] -rotate-3 text-blue-800 scale-105 tracking-wider">
+                              {managerInfo.shortName}
+                            </span>
+                            <span className="text-[8.5px] text-neutral-500 mt-1 pb-0.5">
+                              (M.O. ตรวจทานเรียบร้อย)
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-neutral-300 italic text-[10px] select-none font-mono">
+                            Pending Approval
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -884,10 +912,10 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                 <span className="block mb-6 text-[10px] font-bold">รับรองโดย Maintenance Officer</span>
                 <div className="relative w-48 border-b border-dotted border-black flex justify-center items-center h-8">
                   <div className="absolute text-blue-850 font-serif italic text-[15px] select-none font-black -rotate-3 pl-2 tracking-widest">
-                    อิทธิพงศ์
+                    {managerInfo ? managerInfo.shortName : ''}
                   </div>
                 </div>
-                <span className="text-[10px] text-neutral-500 font-semibold">( นายอิทธิพงศ์ สังวรณ์ )</span>
+                <span className="text-[10px] text-neutral-500 font-semibold">{managerInfo ? `( ${managerInfo.fullName} )` : ''}</span>
                 <span className="text-[9px] text-neutral-400">Maintenance Lead Certifier</span>
               </div>
             </div>
@@ -920,6 +948,7 @@ interface TraceabilityToolsLogDocProps {
 }
 
 export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsLogDocProps) {
+  const managerInfo = getMaintenanceManagerInfo();
   const handlePrint = () => {
     syncWithGoogleSheets(APIService.getDb()).catch(() => {});
     window.print();
@@ -1152,10 +1181,10 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
                   <span className="block mb-6 text-[8.5px] font-extrabold text-neutral-800 uppercase tracking-tight">Certified by Lead Maintenance Officer</span>
                   <div className="relative w-40 border-b border-neutral-900 border-dotted h-8 flex justify-center items-center">
                     <div className="absolute text-emerald-800 font-medium font-serif italic text-xs -rotate-2 select-none">
-                      อิทธิพงศ์ สังวรณ์
+                      {managerInfo ? managerInfo.fullName : ''}
                     </div>
                   </div>
-                  <span className="text-[9.5px] font-bold text-neutral-900 leading-none mt-1">นายอิทธิพงศ์ สังวรณ์</span>
+                  <span className="text-[9.5px] font-bold text-neutral-900 leading-none mt-1">{managerInfo ? managerInfo.fullName : ''}</span>
                   <span className="text-[8px] text-neutral-500">Lead Maintenance Quality Officer</span>
                 </div>
               </div>

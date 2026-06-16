@@ -35,6 +35,7 @@ interface TrainingManagerPanelProps {
   onPrintUsageRecords?: () => void;
   onApproveUser?: (userId: string) => void;
   onRejectUser?: (userId: string) => void;
+  onAddUsageRecord?: (record: Omit<RoomUsageRecord, 'id' | 'maintenanceOfficerStatus'>) => void;
 }
 
 export default function TrainingManagerPanel({
@@ -51,7 +52,8 @@ export default function TrainingManagerPanel({
   onViewRequestDoc,
   onPrintUsageRecords,
   onApproveUser,
-  onRejectUser
+  onRejectUser,
+  onAddUsageRecord
 }: TrainingManagerPanelProps) {
   const isManager = currentUser.role === 'Training Manager';
   const [activeButtonTab, setActiveButtonTab] = useState<'profile' | 'request' | 'schedules' | 'status' | 'docs' | 'approvals'>('profile');
@@ -68,13 +70,33 @@ export default function TrainingManagerPanel({
   const [otherRoomText, setOtherRoomText] = useState('');
   const [requestSignature, setRequestSignature] = useState('');
 
+  // Room Usage Record form states
+  const [roomSubForm, setRoomSubForm] = useState<'request' | 'usage'>('request');
+  const [usageDate, setUsageDate] = useState(new Date().toISOString().split('T')[0]);
+  const [usageRoomName, setUsageRoomName] = useState('');
+  const [usageReportText, setUsageReportText] = useState('');
+  const [usageSignature, setUsageSignature] = useState('');
+
   // Search schedule states
   const [searchStudentId, setSearchStudentId] = useState('');
   const [foundStudent, setFoundStudent] = useState<User | null>(null);
   const [studentSchedules, setStudentSchedules] = useState<ClassSchedule[]>([]);
 
+  // Dynamically get cohorts based on existing student batches in the system
+  const availableBatches = Array.from(
+    new Set(
+      users
+        .filter((u) => u.role === 'นักศึกษา')
+        .map((u) => u.batch || String(u.id || '').substring(0, 2))
+        .filter((b) => b && b.trim().length > 0)
+    )
+  ).sort();
+  const dbBatches = availableBatches.length > 0 ? availableBatches : ['65', '66', '67', '68'];
+
   // Batch states
-  const [cohortBatch, setCohortBatch] = useState('67');
+  const [cohortBatch, setCohortBatch] = useState(() => {
+    return dbBatches.includes('67') ? '67' : (dbBatches[0] || '67');
+  });
 
   // Profile Edit states
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);
@@ -133,6 +155,32 @@ export default function TrainingManagerPanel({
     setPhone('');
     setRequestSignature('');
     Swal.fire({ icon: 'success', title: 'ส่งคำขอสำเร็จ', text: 'ส่งใบคำขอใช้ห้องปฏิบัติการ เรียบร้อยแล้ว ขณะนี้รอเจ้าหน้าที่ฝ่ายซ่อมบำรุงตราระบุความพร้อม', confirmButtonColor: '#171717' });
+  };
+
+  const handleUsageRecordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!usageDate || !usageRoomName || !usageReportText) {
+      Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'กรุณากรอกข้อมูลให้ครบถ้วน', confirmButtonColor: '#171717' });
+      return;
+    }
+    if (!usageSignature) {
+      Swal.fire({ icon: 'error', title: 'ต้องการลายเซ็น', text: 'ผู้เข้าใช้ห้องต้องลงลายเซ็นรับรองความรับผิดชอบ', confirmButtonColor: '#171717' });
+      return;
+    }
+    if (onAddUsageRecord) {
+      onAddUsageRecord({
+        date: usageDate,
+        room: usageRoomName,
+        requesterName: `${currentUser.firstName} ${currentUser.lastName}`,
+        report: usageReportText,
+        remarks: 'บันทึกเข้าใช้งานห้องปฏิบัติการ (ไม่ต้องขอจอง)',
+        requesterSignature: usageSignature,
+      });
+      setUsageRoomName('');
+      setUsageReportText('');
+      setUsageSignature('');
+      Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', text: 'บันทึกประวัติการใช้งานห้องปฏิบัติการ (TLTC-MO-034) เรียบร้อย', confirmButtonColor: '#10b981' });
+    }
   };
 
   const handleSearchStudentSchedule = () => {
@@ -313,173 +361,260 @@ export default function TrainingManagerPanel({
           </form>
         )}
 
-        {/* TAB 2: REQUEST ROOM USE (TLTC-MO-033 Form) */}
+        {/* TAB 2: REQUEST ROOM USE OR DIRECT USAGE RECORD */}
         {activeButtonTab === 'request' && (
-          <form onSubmit={handleRoomSubmit} className="space-y-4">
-            <h3 className="font-sans font-extrabold text-sm mb-4 border-b pb-2">
-              ยื่นใบร้องขอขอใช้โรงซ่อมและห้องปฏิบัติการ (TLTC-MO-033)
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-neutral-50 rounded border border-neutral-250 mb-2">
-              <div>
-                <span className="block text-neutral-500 text-[10px]">ชื่อผู้ร้องเข้าใช้</span>
-                <span className="font-bold">{currentUser.firstName} {currentUser.lastName}</span>
-              </div>
-              <div>
-                <span className="block text-neutral-500 text-[10px]">ตำแหน่งทางวิชาการ</span>
-                <span className="font-bold">{currentUser.role}</span>
-              </div>
-              <div>
-                <span className="block text-neutral-500 text-[10px]">รหัสประจำตัว</span>
-                <span className="font-bold font-mono">{currentUser.id}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-700 mb-1">สังกัด / แผนกวิชาที่เรียนหรือรับผิดชอบ *</label>
-                <input
-                  id="reqDeptInput"
-                  type="text"
-                  required
-                  placeholder="เช่น ช่างบำรุงรักษาอากาศยาน ปี 2"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-700 mb-1">เบอร์ติดต่อกรณีเร่งด่วน *</label>
-                <input
-                  id="reqPhoneInput"
-                  type="text"
-                  required
-                  placeholder="เช่น 081-xxxxxxx"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-700 mb-1">ห้องที่มีความประสงค์จองใช้ *</label>
-                <select
-                  id="reqRoomSelect"
-                  value={selectedRoom}
-                  onChange={(e) => setSelectedRoom(e.target.value)}
-                  className="w-full border border-neutral-300 px-2 py-2 rounded focus:outline-none bg-white font-medium"
-                >
-                  <option value="Practical Area in Hangar">Practical Area in Hangar</option>
-                  <option value="Meeting Room">Meeting Room</option>
-                  <option value="Theoretical Classroom">Theoretical Classroom</option>
-                  <option value="Library Room">Library Room</option>
-                  <option value="Workshop 1">Workshop 1</option>
-                  <option value="Workshop 2">Workshop 2</option>
-                  <option value="Fiberglass Workshop">Fiberglass Workshop</option>
-                  <option value="Examination Room">Examination Room</option>
-                  <option value="Aerodynamic Room">Aerodynamic Room</option>
-                  <option value="Electrical Room">Electrical Room</option>
-                  <option value="Other">อื่นๆ (ระบุห้องด้านล่าง)</option>
-                </select>
-              </div>
-
-              {selectedRoom === 'Other' && (
-                <div>
-                  <label className="block text-[10px] font-bold text-neutral-700 mb-1">กรอกข้อมูลระบุชื่อห้องอื่น *</label>
-                  <input
-                    id="reqOtherRoomInput"
-                    type="text"
-                    required
-                    placeholder="เช่น ห้องล้างเครื่องยนต์"
-                    value={otherRoomText}
-                    onChange={(e) => setOtherRoomText(e.target.value)}
-                    className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-700 mb-1">วันที่ต้องการเข้าใช้งาน *</label>
-                <input
-                  id="reqDateInput"
-                  type="date"
-                  required
-                  value={requestDate}
-                  onChange={(e) => setRequestDate(e.target.value)}
-                  className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาการจอง (ชั่วโมง) *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[8px] font-bold text-neutral-450 mb-0.5">ตั้งแต่เวลา</label>
-                    <select
-                      id="reqStartTimeSelect"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-semibold"
-                    >
-                      {TIME_OPTIONS.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[8px] font-bold text-neutral-450 mb-0.5">ถึงเวลา</label>
-                    <select
-                      id="reqEndTimeSelect"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-semibold"
-                    >
-                      {TIME_OPTIONS.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-700 mb-1">บอกจุดประสงค์ในการขอใช้ห้องและสิ่งที่ต้องการพัฒนาฝึกปฏิบัติ *</label>
-              <textarea
-                id="reqPurposeTextarea"
-                required
-                rows={3}
-                placeholder="อธิบายกิจกรรมการปฏิบัติงานของช่างอากาศยาน เช่น ตรวจซ่อมระบบไฟปีกเครื่องบิน หรือ ร้อยลวดน็อคฟล็อคฝาสูบเครื่องบิน"
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-neutral-750">ลงนามลายมือผู้กรอกขอใช้ห้อง *</label>
-              <div className="w-full max-w-sm">
-                <SignaturePad 
-                  onSave={async (val) => {
-                    if (val) {
-                      const compressed = await compressImage(val, 240, 70, 0.5);
-                      setRequestSignature(compressed);
-                    } else {
-                      setRequestSignature('');
-                    }
-                  }} 
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 border-t flex justify-end">
-              <button id="sendRoomRequestBtn" type="submit" className="px-6 py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white font-extrabold rounded shadow-sm text-xs cursor-pointer">
-                ส่งเอกสารขอจองห้องคลังบำรุง
+          <div className="space-y-6">
+            {/* Switcher pills */}
+            <div className="flex gap-2 p-1 bg-neutral-100 rounded-lg w-full max-w-md no-print">
+              <button
+                type="button"
+                onClick={() => setRoomSubForm('request')}
+                className={`flex-1 text-center py-2 rounded-md font-sans font-bold text-[11px] transition-all cursor-pointer ${
+                  roomSubForm === 'request'
+                    ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200'
+                    : 'text-neutral-500 hover:text-neutral-850'
+                }`}
+              >
+                1. ขอใช้พื้นที่ห้องปฏิบัติการ (TLTC-MO-033)
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoomSubForm('usage')}
+                className={`flex-1 text-center py-2 rounded-md font-sans font-bold text-[11px] transition-all cursor-pointer ${
+                  roomSubForm === 'usage'
+                    ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200'
+                    : 'text-neutral-500 hover:text-neutral-850'
+                }`}
+              >
+                2. บันทึกการใช้งานห้อง (TLTC-MO-034)
               </button>
             </div>
-          </form>
+
+            {roomSubForm === 'request' ? (
+              <form onSubmit={handleRoomSubmit} className="space-y-4">
+                <h3 className="font-sans font-extrabold text-sm border-b pb-2 text-neutral-950 uppercase">
+                  ยื่นใบร้องขอขอใช้โรงซ่อมและห้องปฏิบัติการ (TLTC-MO-033)
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-neutral-50 rounded border border-neutral-250 mb-2">
+                  <div>
+                    <span className="block text-neutral-500 text-[10px]">ชื่อผู้ร้องเข้าใช้</span>
+                    <span className="font-bold">{currentUser.firstName} {currentUser.lastName}</span>
+                  </div>
+                  <div>
+                    <span className="block text-neutral-500 text-[10px]">ตำแหน่งทางวิชาการ</span>
+                    <span className="font-bold">{currentUser.role}</span>
+                  </div>
+                  <div>
+                    <span className="block text-neutral-500 text-[10px]">รหัสประจำตัว</span>
+                    <span className="font-bold font-mono">{currentUser.id}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">สังกัด / แผนกวิชาที่เรียนหรือรับผิดชอบ *</label>
+                    <input
+                      id="reqDeptInput"
+                      type="text"
+                      required
+                      placeholder="เช่น ช่างบำรุงรักษาอากาศยาน ปี 2"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">เบอร์ติดต่อกรณีเร่งด่วน *</label>
+                    <input
+                      id="reqPhoneInput"
+                      type="text"
+                      required
+                      placeholder="เช่น 081-xxxxxxx"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">ห้องที่มีความประสงค์จองใช้ *</label>
+                    <select
+                      id="reqRoomSelect"
+                      value={selectedRoom}
+                      onChange={(e) => setSelectedRoom(e.target.value)}
+                      className="w-full border border-neutral-300 px-2 py-2 rounded focus:outline-none bg-white font-medium"
+                    >
+                      <option value="Practical Area in Hangar">Practical Area in Hangar</option>
+                      <option value="Meeting Room">Meeting Room</option>
+                      <option value="Theoretical Classroom">Theoretical Classroom</option>
+                      <option value="Library Room">Library Room</option>
+                      <option value="Workshop 1">Workshop 1</option>
+                      <option value="Workshop 2">Workshop 2</option>
+                      <option value="Fiberglass Workshop">Fiberglass Workshop</option>
+                      <option value="Examination Room">Examination Room</option>
+                      <option value="Aerodynamic Room">Aerodynamic Room</option>
+                      <option value="Electrical Room">Electrical Room</option>
+                      <option value="Other">อื่นๆ (ระบุห้องด้านล่าง)</option>
+                    </select>
+                  </div>
+
+                  {selectedRoom === 'Other' && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-neutral-700 mb-1">กรอกข้อมูลระบุชื่อห้องอื่น *</label>
+                      <input
+                        id="reqOtherRoomInput"
+                        type="text"
+                        required
+                        placeholder="เช่น ห้องล้างเครื่องยนต์"
+                        value={otherRoomText}
+                        onChange={(e) => setOtherRoomText(e.target.value)}
+                        className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">วันที่ต้องการเข้าใช้งาน *</label>
+                    <input
+                      id="reqDateInput"
+                      type="date"
+                      required
+                      value={requestDate}
+                      onChange={(e) => setRequestDate(e.target.value)}
+                      className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาการจอง (ชั่วโมง) *</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[8px] font-bold text-neutral-450 mb-0.5">ตั้งแต่เวลา</label>
+                        <select
+                          id="reqStartTimeSelect"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-semibold"
+                        >
+                          {TIME_OPTIONS.map(time => (
+                            <option key={time} value={time}>{time}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[8px] font-bold text-neutral-450 mb-0.5">ถึงเวลา</label>
+                        <select
+                          id="reqEndTimeSelect"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-semibold"
+                        >
+                          {TIME_OPTIONS.map(time => (
+                            <option key={time} value={time}>{time}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-neutral-700 mb-1">บอกจุดประสงค์ในการขอใช้ห้องและสิ่งที่ต้องการพัฒนาฝึกปฏิบัติ *</label>
+                  <textarea
+                    id="reqPurposeTextarea"
+                    required
+                    rows={3}
+                    placeholder="อธิบายกิจกรรมการปฏิบัติงานของช่างอากาศยาน เช่น ตรวจซ่อมระบบไฟปีกเครื่องบิน หรือ ร้อยลวดน็อคฟล็อคฝาสูบเครื่องบิน"
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value)}
+                    className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-neutral-750">ลงนามลายมือผู้กรอกขอใช้ห้อง *</label>
+                  <div className="w-full max-w-sm">
+                    <SignaturePad 
+                      onSave={async (val) => {
+                        if (val) {
+                          const compressed = await compressImage(val, 240, 70, 0.5);
+                          setRequestSignature(compressed);
+                        } else {
+                          setRequestSignature('');
+                        }
+                      }} 
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t flex justify-end">
+                  <button id="sendRoomRequestBtn" type="submit" className="px-6 py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white font-extrabold rounded shadow-sm text-xs cursor-pointer">
+                    ส่งเอกสารขอจองห้องคลังบำรุง
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleUsageRecordSubmit} className="space-y-4 max-w-2xl bg-white border border-neutral-300 p-5 rounded-lg shadow-xs">
+                <h3 className="font-sans font-extrabold text-xs border-b pb-2 text-neutral-900 uppercase">
+                  แบบฟอร์มบันทึกการเข้าใช้งานห้องปฏิบัติการ (TLTC-MO-034 logs)
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">พิมพ์ระบุชื่อห้อง / พื้นที่ห้องปฏิบัติการที่เข้าใช้ *</label>
+                    <input
+                      id="usageRoomNameInput"
+                      type="text"
+                      required
+                      placeholder="พิมพ์ชื่อห้อง เช่น Workshop 1 หรือ theoretical Classroom"
+                      value={usageRoomName}
+                      onChange={(e) => setUsageRoomName(e.target.value)}
+                      className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">วันที่เข้าปฏิบัติงานจริง *</label>
+                    <input
+                      id="usageDateInput"
+                      type="date"
+                      required
+                      value={usageDate}
+                      onChange={(e) => setUsageDate(e.target.value)}
+                      className="w-full border border-neutral-300 px-3 py-1.5 rounded focus:outline-none font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-neutral-700 mb-1">รายงานสิ่งที่ต้องการพัฒนา (ข้อสังเกต/อุปกรณ์ชำรุด/ความคิดเห็น) *</label>
+                  <textarea
+                    id="usageReportTextarea"
+                    required
+                    rows={3}
+                    placeholder="ระบุ เช่น เพิ่มสายดินหรืออุปกรณ์ความสว่าง, แอร์เสีย 1 เครื่อง หรือความพร้อมสมบูรณ์ดี..."
+                    value={usageReportText}
+                    onChange={(e) => setUsageReportText(e.target.value)}
+                    className="w-full border border-neutral-300 px-3 py-2 rounded text-xs focus:outline-none focus:border-neutral-900"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-neutral-750">ผู้เข้าปฏิบัติงานลงลายเซ็นรับรอง *</label>
+                  <div className="w-full max-w-sm">
+                    <SignaturePad onSave={(data) => setUsageSignature(data)} placeholder="วาดลายลายเซ็นอิเล็กทรอนิกส์..." />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t">
+                  <button id="saveDirectRoomUsageBtn" type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2 rounded cursor-pointer text-xs transition-all shadow-3xs uppercase tracking-wide">
+                    บันทึกข้อมูลการใช้ห้องและเซ็นชื่อ
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
         {/* TAB 3: CHECK STUDENT SCHEDULE */}
@@ -571,10 +706,9 @@ export default function TrainingManagerPanel({
                   onChange={(e) => setCohortBatch(e.target.value)}
                   className="border border-neutral-300 px-1.5 py-0.5 rounded font-mono font-bold bg-white text-xs"
                 >
-                  <option value="65">รุ่น 65</option>
-                  <option value="66">รุ่น 66</option>
-                  <option value="67">รุ่น 67</option>
-                  <option value="68">รุ่น 68</option>
+                  {dbBatches.map(b => (
+                    <option key={b} value={b}>รุ่น {b}</option>
+                  ))}
                 </select>
               </div>
             </div>

@@ -509,8 +509,7 @@ export default function App() {
   const pullLatestData = async (quiet = false): Promise<boolean> => {
     if (!quiet) {
       Swal.fire({
-        title: 'กำลังเชื่อมโยงข้อมูลกับคลาวด์...',
-        text: 'ระบบกำลังดึงข้อมูลรายชื่อผู้เข้าใช้และสิทธิ์การอนุมัติล่าสุดจาก Google Sheets โปรดรอสักครู่...',
+        title: 'กำลังเตรียม Form เพื่อลงทะเบียน',
         allowOutsideClick: false,
         didOpen: () => {
           Swal.showLoading();
@@ -868,6 +867,26 @@ export default function App() {
       confirmButtonColor: '#10b981',
       timer: 2000,
       showConfirmButton: false
+    });
+  };
+
+  const handleAddUsageRecord = (record: Omit<RoomUsageRecord, 'id' | 'maintenanceOfficerStatus'>) => {
+    const freshRecord: RoomUsageRecord = {
+      id: `REC-${Date.now()}`,
+      ...record,
+      maintenanceOfficerStatus: 'Pending',
+    };
+
+    updateDb({
+      ...db,
+      roomUsageRecords: [...db.roomUsageRecords, freshRecord]
+    });
+
+    Swal.fire({
+      icon: 'success',
+      title: 'บันทึกการใช้ห้องสำเร็จ',
+      text: 'บันทึกข้อมูลการเข้าใช้ห้องปฏิบัติการ (TLTC-MO-034) เรียบร้อยแล้ว',
+      confirmButtonColor: '#10b981',
     });
   };
 
@@ -1334,6 +1353,7 @@ export default function App() {
                 onPrintUsageRecords={() => setShowUsageRecordDoc(true)}
                 onApproveUser={handleApproveUser}
                 onRejectUser={handleRejectUser}
+                onAddUsageRecord={handleAddUsageRecord}
               />
             ) : currentUser.role === 'Maintenance Manager' || currentUser.role === 'Maintenance Staff' ? (
               <MaintenancePanel
@@ -1370,6 +1390,7 @@ export default function App() {
                 onSubmitRoomRequest={handleSubmitRoomRequest}
                 onViewRequestDoc={(req) => setActiveRequestDoc(req)}
                 onUpdateProfile={handleUpdateProfile}
+                onAddUsageRecord={handleAddUsageRecord}
               />
             )}
 
