@@ -681,6 +681,21 @@ export default function App() {
 
   // --- ACTIONS FOR ADMIN ---
   const handleApproveUser = (userId: string) => {
+    const userToApprove = db.users.find(u => u.id === userId);
+    if (!userToApprove) return;
+
+    if (currentUser?.role === 'Admin') {
+      if (userToApprove.role === 'Instructor') {
+        Swal.fire('ไม่สามารถอนุมัติได้', 'Admin ไม่สามารถอนุมัติ Instructor ได้', 'error');
+        return;
+      }
+    } else if (currentUser?.role === 'Training Manager' || currentUser?.role === 'Training Staff') {
+      if (userToApprove.role !== 'นักศึกษา' && userToApprove.role !== 'Instructor') {
+        Swal.fire('ไม่สามารถอนุมัติได้', 'ฝ่าย Training สามารถอนุมัติได้เฉพาะ นักศึกษา และ Instructor เท่านั้น', 'error');
+        return;
+      }
+    }
+
     const nextUsers = db.users.map(u => u.id === userId ? { ...u, status: 'Active' as const } : u);
     updateDb({ ...db, users: nextUsers });
     Swal.fire('อนุมัติแล้ว', `อนุมัติสิทธิ์ความปลอดภัยผู้ใช้นี้เรียบร้อย`, 'success');
