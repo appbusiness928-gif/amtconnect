@@ -4,9 +4,9 @@
  */
 
 import React from 'react';
-import { Printer, X, Award, ShieldAlert, CheckCircle, FileText } from 'lucide-react';
+import { Printer, X, Award, ShieldAlert, CheckCircle, FileText, Cloud } from 'lucide-react';
 import { User, RoomRequest, RoomUsageRecord, BorrowRecord } from '../types';
-import { getAppOriginForQR, APIService, syncWithGoogleSheets } from '../lib/api';
+import { getAppOriginForQR, APIService, syncWithGoogleSheets, uploadToGoogleDrive } from '../lib/api';
 import { alerts as Swal } from '../lib/alerts';
 
 export function ThalangLogo({ className = "w-16 h-16" }: { className?: string }) {
@@ -29,6 +29,35 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
   const handlePrint = () => {
     syncWithGoogleSheets(APIService.getDb()).catch(() => {});
     window.print();
+  };
+
+  const handleSaveToDrive = async () => {
+    Swal.fire({
+      title: 'กำลังบันทึกลง Google Drive...',
+      text: 'กรุณารอสักครู่ ระบบกำลังจัดทำชุดเอกสาร PDF และอัปโหลดไปยังคลาวด์ไดรฟ์',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    const cardEl = document.querySelector('.print-card');
+    if (!cardEl) {
+      Swal.fire('ข้อผิดพลาด', 'ไม่พบการ์ดข้อมูลผู้ที่ต้องการพิมพ์', 'error');
+      return;
+    }
+
+    const htmlContent = cardEl.outerHTML;
+    const result = await uploadToGoogleDrive(`บัตรประจำตัว_${user.firstName}_${user.id}.pdf`, htmlContent);
+    if (result.success) {
+      Swal.fire({
+        title: 'สำเร็จ!',
+        html: `เอกสารบันทึกลงระบบ Google Drive เรียบร้อยแล้ว!<br/><span class="text-xs text-neutral-500 font-sans">สามารถตรวจสอบและดาวน์โหลดได้ที่โฟลเดอร์ Google Drive หลักของท่าน</span>`,
+        icon: 'success'
+      });
+    } else {
+      Swal.fire('ล้มเหลว', result.message, 'error');
+    }
   };
 
   return (
@@ -125,6 +154,13 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
         </div>
 
         <div className="bg-neutral-50 p-3 flex justify-end gap-2 border-t border-neutral-200">
+          <button
+            onClick={handleSaveToDrive}
+            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-1.5 px-3 rounded-md transition-colors cursor-pointer"
+          >
+            <Cloud size={13} />
+            <span>บันทึกลง Google Drive</span>
+          </button>
           <button
             onClick={handlePrint}
             className="flex items-center gap-1 bg-neutral-950 hover:bg-neutral-800 text-white font-sans text-xs font-bold py-1.5 px-3 rounded-md transition-colors cursor-pointer"
@@ -230,6 +266,35 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
   const handlePrint = () => {
     syncWithGoogleSheets(APIService.getDb()).catch(() => {});
     window.print();
+  };
+
+  const handleSaveToDrive = async () => {
+    Swal.fire({
+      title: 'กำลังบันทึกลง Google Drive...',
+      text: 'กรุณารอสักครู่ ระบบกำลังจัดทำชุดเอกสาร PDF และอัปโหลดไปยังคลาวด์ไดรฟ์',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    const cardEl = document.querySelector('.print-card');
+    if (!cardEl) {
+      Swal.fire('ข้อผิดพลาด', 'ไม่พบฟอร์มข้อมูลที่ต้องการพิมพ์', 'error');
+      return;
+    }
+
+    const htmlContent = cardEl.outerHTML;
+    const result = await uploadToGoogleDrive(`ใบขอใช้ห้อง_${request.room}_${request.date}.pdf`, htmlContent);
+    if (result.success) {
+      Swal.fire({
+        title: 'สำเร็จ!',
+        html: `เอกสารบันทึกลงระบบ Google Drive เรียบร้อยแล้ว!<br/><span class="text-xs text-neutral-500 font-sans">สามารถตรวจสอบและดาวน์โหลดได้ที่โฟลเดอร์ Google Drive หลักของท่าน</span>`,
+        icon: 'success'
+      });
+    } else {
+      Swal.fire('ล้มเหลว', result.message, 'error');
+    }
   };
 
   const promptRecordUsage = () => {
@@ -720,6 +785,13 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
             </button>
           )}
           <button
+            onClick={handleSaveToDrive}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <Cloud size={14} />
+            <span>บันทึกลง Google Drive</span>
+          </button>
+          <button
             onClick={handlePrint}
             className="flex items-center gap-2 bg-neutral-950 hover:bg-neutral-800 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-colors cursor-pointer"
           >
@@ -743,6 +815,35 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
   const handlePrint = () => {
     syncWithGoogleSheets(APIService.getDb()).catch(() => {});
     window.print();
+  };
+
+  const handleSaveToDrive = async () => {
+    Swal.fire({
+      title: 'กำลังบันทึกลง Google Drive...',
+      text: 'กรุณารอสักครู่ ระบบกำลังจัดทำชุดเอกสาร PDF และอัปโหลดไปยังคลาวด์ไดรฟ์',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    const cardEl = document.querySelector('.print-landscape');
+    if (!cardEl) {
+      Swal.fire('ข้อผิดพลาด', 'ไม่พบสมุดบันทึกข้อมูลที่ต้องการพิมพ์', 'error');
+      return;
+    }
+
+    const htmlContent = cardEl.outerHTML;
+    const result = await uploadToGoogleDrive(`สมุดบันทึกการใช้ห้อง_TLTC-MO-034.pdf`, htmlContent);
+    if (result.success) {
+      Swal.fire({
+        title: 'สำเร็จ!',
+        html: `เอกสารบันทึกลงระบบ Google Drive เรียบร้อยแล้ว!<br/><span class="text-xs text-neutral-500 font-sans">สามารถตรวจสอบและดาวน์โหลดได้ที่โฟลเดอร์ Google Drive หลักของท่าน</span>`,
+        icon: 'success'
+      });
+    } else {
+      Swal.fire('ล้มเหลว', result.message, 'error');
+    }
   };
 
   const latestCertifiedDate = React.useMemo(() => {
@@ -932,6 +1033,13 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
 
         <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2">
           <button
+            onClick={handleSaveToDrive}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <Cloud size={14} />
+            <span>บันทึกลง Google Drive</span>
+          </button>
+          <button
             onClick={handlePrint}
             className="flex items-center gap-2 bg-neutral-950 hover:bg-neutral-800 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-colors cursor-pointer"
           >
@@ -954,6 +1062,35 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
   const handlePrint = () => {
     syncWithGoogleSheets(APIService.getDb()).catch(() => {});
     window.print();
+  };
+
+  const handleSaveToDrive = async () => {
+    Swal.fire({
+      title: 'กำลังบันทึกลง Google Drive...',
+      text: 'กรุณารอสักครู่ ระบบกำลังจัดทำชุดเอกสาร PDF และอัปโหลดไปยังคลาวด์ไดรฟ์',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    const cardEl = document.querySelector('.print-landscape-mo001');
+    if (!cardEl) {
+      Swal.fire('ข้อผิดพลาด', 'ไม่พบสมุดทะเบียนข้อมูลที่ต้องการพิมพ์', 'error');
+      return;
+    }
+
+    const htmlContent = cardEl.outerHTML;
+    const result = await uploadToGoogleDrive(`สมุดทะเบียนยืมคืนเครื่องมือ_TLTC-MO-001.pdf`, htmlContent);
+    if (result.success) {
+      Swal.fire({
+        title: 'สำเร็จ!',
+        html: `เอกสารบันทึกลงระบบ Google Drive เรียบร้อยแล้ว!<br/><span class="text-xs text-neutral-500 font-sans">สามารถตรวจสอบและดาวน์โหลดได้ที่โฟลเดอร์ Google Drive หลักของท่าน</span>`,
+        icon: 'success'
+      });
+    } else {
+      Swal.fire('ล้มเหลว', result.message, 'error');
+    }
   };
 
   return (
@@ -1202,6 +1339,13 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
         </div>
 
         <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 no-print">
+          <button
+            onClick={handleSaveToDrive}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-2.5 px-5 rounded transition-transform duration-100 active:scale-95 cursor-pointer shadow-sm"
+          >
+            <Cloud size={14} />
+            <span>บันทึกลง Google Drive</span>
+          </button>
           <button
             onClick={handlePrint}
             className="flex items-center gap-2 bg-neutral-950 hover:bg-neutral-850 text-white font-sans text-xs font-bold py-2.5 px-5 rounded transition-transform duration-100 active:scale-95 cursor-pointer shadow-sm"

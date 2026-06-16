@@ -113,6 +113,45 @@ function doPost(e) {
       }
       
       responseData = { success: true, message: "Synchronized all collections successfully into Google Sheet." };
+    } else if (payload.action === "uploadPDFToDrive") {
+      const fileName = payload.fileName || "AMT_Connect_Document.pdf";
+      let fileBlob;
+      
+      if (payload.htmlContent) {
+        // จัดการตกแต่งหน้าตา HTML อย่างเป็นทางการก่อนสร้างเป็น PDF ลง Google Drive
+        const styledHtml = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+          '<style>' +
+          '@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap");' +
+          'body { font-family: "Sarabun", sans-serif; background-color: white; color: black; padding: 25px; line-height: 1.5; font-size: 11px; }' +
+          'table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px; }' +
+          'th, td { border: 1px solid black; padding: 6px; text-align: left; vertical-align: top; }' +
+          '.text-center { text-align: center !important; }' +
+          '.text-right { text-align: right !important; }' +
+          '.font-bold { font-weight: bold !important; }' +
+          '.grid-cols-2 { display: flex; width: 100%; }' +
+          '.col-span-6 { width: 50%; }' +
+          '.col-span-12 { width: 100%; }' +
+          '.p-8, .p-12 { padding: 10px !important; }' +
+          '.shadow-xl, .shadow-2xl, .shadow-md, .shadow-sm { box-shadow: none !important; border: 1px solid #ddd !important; }' +
+          '.bg-neutral-950 { background-color: #0F172A !important; color: white !important; }' +
+          '.bg-slate-50, .bg-neutral-50, .bg-neutral-100 { background-color: #f8fafc !important; }' +
+          '</style></head><body>' +
+          payload.htmlContent +
+          '</body></html>';
+          
+        const tempBlob = Utilities.newBlob(styledHtml, "text/html", fileName.replace(".pdf", ".html"));
+        fileBlob = tempBlob.getAs("application/pdf");
+        fileBlob.setName(fileName);
+      } else {
+        throw new Error("Missing htmlContent parameter");
+      }
+      
+      const file = DriveApp.createFile(fileBlob);
+      responseData = { 
+        success: true, 
+        message: "บันทึกไฟล์ PDF " + fileName + " ลง Google Drive สำเร็จ!", 
+        fileUrl: file.getUrl() 
+      };
     } else {
       responseData = { success: false, message: "Invalid action or payload" };
     }

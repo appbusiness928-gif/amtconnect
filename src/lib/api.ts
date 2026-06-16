@@ -461,3 +461,35 @@ export function getAppOriginForQR(): string {
   
   return origin;
 }
+
+export async function uploadToGoogleDrive(fileName: string, htmlContent: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const url = getGoogleScriptUrl();
+    const payload = JSON.stringify({
+      action: 'uploadPDFToDrive',
+      fileName,
+      htmlContent,
+    });
+    
+    // Call the Apps Script POST endpoint with no-cors to prevent pre-flight/CORS redirect blocks
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: payload,
+    });
+    
+    return {
+      success: true,
+      message: `บันทึกเอกสาร "${fileName}" ลงใน Google Drive เรียบร้อยแล้ว!`,
+    };
+  } catch (err: any) {
+    console.error('Failed to upload to Google Drive:', err);
+    return {
+      success: false,
+      message: err.message || 'ไม่สามารถบันทึกไฟล์ลง Google Drive ได้ โปรดตรวจสอบสิทธิ์เชื่อมต่อ',
+    };
+  }
+}
