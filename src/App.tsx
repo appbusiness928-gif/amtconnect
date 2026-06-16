@@ -500,7 +500,7 @@ export default function App() {
       if (currentUser) {
         pullLatestData(true);
       }
-    }, 30000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [currentUser]);
 
