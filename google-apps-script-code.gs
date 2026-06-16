@@ -1,12 +1,12 @@
 /**
  * Google Apps Script (Code.gs)
  * สำหรับระบบ AMT CONNECT (ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน)
- * เชื่อมต่อกับ Sheet ID: 1SU3SmuoUTWCjod6uWQOCiZL_-k2Yv8ztbe24-ZimgDg
+ * เชื่อมต่อกับ Sheet ID: 1-KloNfBjgIFGgC5Ml7hzQ8oJyzF1BG5oGIKuZeNpe-g
  * 
- * ลิงก์สเปรดชีต: https://docs.google.com/spreadsheets/d/1SU3SmuoUTWCjod6uWQOCiZL_-k2Yv8ztbe24-ZimgDg/edit?pli=1&gid=0#gid=0
+ * ลิงก์สเปรดชีต: https://docs.google.com/spreadsheets/d/1-KloNfBjgIFGgC5Ml7hzQ8oJyzF1BG5oGIKuZeNpe-g/edit?gid=0#gid=0
  * 
  * วิธีการติดตั้ง:
- * 1. เปิด Google Sheets (ID: 1SU3SmuoUTWCjod6uWQOCiZL_-k2Yv8ztbe24-ZimgDg)
+ * 1. เปิด Google Sheets (ID: 1-KloNfBjgIFGgC5Ml7hzQ8oJyzF1BG5oGIKuZeNpe-g)
  * 2. ไปที่ Extension (ส่วนขยาย) > Apps Script
  * 3. ลบโค้ดเริ่มต้นทั้งหมด แล้ววางโค้ดนี้ลงไปในไฟล์ Code.gs
  * 4. บันทึกโครงการ และกด Deploy (การใช้งานจริง) > New Deployment (การปรับใช้งานใหม่)
@@ -16,7 +16,7 @@
  * 8. คัดลอก Web App URL ไปใส่ในระบบ AMT Connect เพื่อซิงค์ข้อมูลให้เป็นแบบเรียลไทม์!
  */
 
-const SPREADSHEET_ID = "1SU3SmuoUTWCjod6uWQOCiZL_-k2Yv8ztbe24-ZimgDg";
+const SPREADSHEET_ID = "1-KloNfBjgIFGgC5Ml7hzQ8oJyzF1BG5oGIKuZeNpe-g";
 
 // รายชื่อชีตและหัวข้อหลัก (มีครบถ้วนสมบูรณ์ตาม Typescript interface)
 const SHEETS_CONFIG = {

@@ -494,6 +494,16 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Real-time data polling loop (every 30 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentUser) {
+        pullLatestData(true);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
   // Update central state and auto-save
   const updateDb = async (newDb: typeof db) => {
     setDb(newDb);
@@ -511,6 +521,7 @@ export default function App() {
       Swal.fire({
         title: 'กำลังเตรียม Form เพื่อลงทะเบียน',
         allowOutsideClick: false,
+        showConfirmButton: false,
         didOpen: () => {
           Swal.showLoading();
         }
@@ -554,6 +565,7 @@ export default function App() {
     Swal.fire({
       title: 'กำลังเข้าสู่ระบบ',
       allowOutsideClick: false,
+      showConfirmButton: false,
       didOpen: () => {
         Swal.showLoading();
       }
@@ -685,8 +697,8 @@ export default function App() {
     if (!userToApprove) return;
 
     if (currentUser?.role === 'Admin') {
-      if (userToApprove.role === 'Instructor') {
-        Swal.fire('ไม่สามารถอนุมัติได้', 'Admin ไม่สามารถอนุมัติ Instructor ได้', 'error');
+      if (userToApprove.role === 'Instructor' || userToApprove.role === 'นักศึกษา') {
+        Swal.fire('ไม่สามารถอนุมัติได้', 'Admin ไม่สามารถอนุมัติ Instructor หรือ นักศึกษาได้', 'error');
         return;
       }
     } else if (currentUser?.role === 'Training Manager' || currentUser?.role === 'Training Staff') {
@@ -1339,6 +1351,7 @@ export default function App() {
             {/* ROUTE INDIVIDUAL DASHBOARD ROOT DEPENDING ON USER POSITION ROLE */}
             {currentUser.role === 'Admin' ? (
               <AdminPanel
+                currentUser={currentUser}
                 users={db.users}
                 roomRequests={db.roomRequests}
                 roomUsageRecords={db.roomUsageRecords}

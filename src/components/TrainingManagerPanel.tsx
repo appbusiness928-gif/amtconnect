@@ -91,12 +91,20 @@ export default function TrainingManagerPanel({
         .filter((b) => b && typeof b === 'string' && b.trim().length > 0)
     )
   ).sort();
-  const dbBatches = availableBatches.length > 0 ? availableBatches : ['65', '66', '67', '68'];
+
+  const dbBatches = availableBatches;
 
   // Batch states
   const [cohortBatch, setCohortBatch] = useState(() => {
-    return dbBatches.includes('67') ? '67' : (dbBatches[0] || '67');
+    return dbBatches[0] || '';
   });
+
+  // Automatically adjust selected batch once options load/change
+  React.useEffect(() => {
+    if (dbBatches.length > 0 && !dbBatches.includes(cohortBatch)) {
+      setCohortBatch(dbBatches[0]);
+    }
+  }, [dbBatches, cohortBatch]);
 
   // Profile Edit states
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);

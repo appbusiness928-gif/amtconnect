@@ -24,6 +24,7 @@ import {
 import { TraceabilityToolsLogDoc } from './Documents';
 
 interface AdminPanelProps {
+  currentUser: User;
   users: User[];
   roomRequests: RoomRequest[];
   roomUsageRecords: RoomUsageRecord[];
@@ -39,6 +40,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({
+  currentUser,
   users,
   roomRequests,
   roomUsageRecords,
@@ -267,12 +269,12 @@ export default function AdminPanel({
 
   // Get cohorts (groups of batches) strictly based on first 2 characters of student id
   const batches = [
-    'All', 
+    'All',
     ...Array.from(new Set(
       (users || [])
         .filter(u => u && u.role === 'นักศึกษา')
-        .map(u => String(u.id || '').substring(0, 2))
-        .filter(b => b && b.length === 2 && !isNaN(Number(b)))
+        .map(u => u.batch || String(u.id || '').substring(0, 2))
+        .filter(b => b && String(b).trim().length > 0)
     )).sort()
   ];
 
@@ -367,37 +369,52 @@ export default function AdminPanel({
                 <span>คำขอสิทธิ์เชื่อมต่อระบบความรักษาความปลอดภัย (ค้างอนุมัติ)</span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {pendingUsers.map(pUser => (
-                  <div key={pUser.id} className="bg-white border border-neutral-300 p-3 rounded flex items-center justify-between gap-3 shadow-inner">
-                    <div className="flex items-center gap-3">
-                      <img src={pUser.photoUrl} alt="avatar" className="w-10 h-12 object-cover border border-neutral-300 rounded" referrerPolicy="no-referrer" />
-                      <div>
-                        <p className="font-sans font-bold text-neutral-950">{pUser.firstName} {pUser.lastName}</p>
-                        <p className="text-[10px] font-mono font-bold text-neutral-500 uppercase">{pUser.role} | ID: {pUser.id}</p>
-                        <p className="text-[9px] text-neutral-400 truncate">{pUser.email}</p>
+                {pendingUsers.map(pUser => {
+                  const canApprove = () => {
+                    if (currentUser.role === 'Admin') {
+                      return pUser.role !== 'Instructor' && pUser.role !== 'นักศึกษา';
+                    } else if (currentUser.role === 'Training Manager' || currentUser.role === 'Training Staff') {
+                      return true; // Manager/Staff can approve students/instructors (implied by previous logic)
+                    }
+                    return false;
+                  };
+
+                  return (
+                    <div key={pUser.id} className="bg-white border border-neutral-300 p-3 rounded flex items-center justify-between gap-3 shadow-inner">
+                      <div className="flex items-center gap-3">
+                        <img src={pUser.photoUrl} alt="avatar" className="w-10 h-12 object-cover border border-neutral-300 rounded" referrerPolicy="no-referrer" />
+                        <div>
+                          <p className="font-sans font-bold text-neutral-950">{pUser.firstName} {pUser.lastName}</p>
+                          <p className="text-[10px] font-mono font-bold text-neutral-500 uppercase">{pUser.role} | ID: {pUser.id}</p>
+                          <p className="text-[9px] text-neutral-400 truncate">{pUser.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0 text-right">
+                        <div className="flex gap-1.5 justify-end">
+                          {pUser.role !== 'นักศึกษา' && (
+                            <button
+                              type="button"
+                              onClick={() => onRejectUser(pUser.id)}
+                              className="p-1 px-2 border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded text-[10px] font-sans font-bold transition-colors cursor-pointer"
+                            >
+                              ปฏิเสธ
+                            </button>
+                          )}
+                          {canApprove() && (
+                            <button
+                              type="button"
+                              onClick={() => onApproveUser(pUser.id)}
+                              className="p-1 px-2.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                            >
+                              อนุมัติสิทธิ์
+                            </button>
+                          )}
+                        </div>
+                        <span className="text-[8px] text-emerald-600 font-sans font-bold">✓ อนุญาตสิทธิ์ผู้ดูแลระบบ</span>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1 shrink-0 text-right">
-                      <div className="flex gap-1.5 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => onRejectUser(pUser.id)}
-                          className="p-1 px-2 border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded text-[10px] font-sans font-bold transition-colors cursor-pointer"
-                        >
-                          ปฏิเสธ
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onApproveUser(pUser.id)}
-                          className="p-1 px-2.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded text-[10px] font-bold transition-colors cursor-pointer"
-                        >
-                          อนุมัติสิทธิ์
-                        </button>
-                      </div>
-                      <span className="text-[8px] text-emerald-600 font-sans font-bold">✓ อนุญาตสิทธิ์ผู้ดูแลระบบ</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -458,7 +475,7 @@ export default function AdminPanel({
                           </td>
                           <td className="py-2 px-1">
                             <select
-                              disabled={false}
+                              disabled={student.role === 'นักศึกษา'}
                               value={student.status}
                               onChange={(e) => onUpdateUserStatus(student.id, e.target.value as User['status'])}
                               className="border px-1.5 py-0.5 rounded text-[10px] font-sans font-medium bg-white text-neutral-800 cursor-pointer border-neutral-300 focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"

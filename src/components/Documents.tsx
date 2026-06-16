@@ -32,7 +32,7 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden flex flex-col border border-neutral-200">
         <div className="bg-neutral-950 text-white p-3 flex items-center justify-between">
           <span className="text-xs font-mono font-bold">AMT CONNECT ID CARD ENGINE</span>
@@ -396,7 +396,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
   const isOther = !isHangar && !isMeeting && !isTheoretical && !isLibrary && !isWorkshop1 && !isWorkshop2 && !isFiberglass && !isExamination && !isAerodynamic && !isElectrical;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print animate-fade-in">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col border border-neutral-200">
         <div className="bg-neutral-950 text-white p-4 flex items-center justify-between">
           <div>
@@ -756,7 +756,7 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
   }, [roomRequests]);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print animate-fade-in">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
       {/* Dynamic Landscape print setup */}
       <style>{`
         @media print {

@@ -15,7 +15,7 @@ import {
 } from '../types';
 
 // The Fallback Google Apps Script URL provided by the user
-export const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxw0YCFlcNRyBe890FtGcbUmNZPUzdIgPAO5HzHRZ6U2eZu4nwaos6vq4IN8zYsI9W2/exec';
+export const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9VQCtzdWXI8XIH-H5lva4HddCNhKHNqWt6pOKodEzpfOox0SHYjJlhSwRA6rU3R6y/exec';
 
 export function getGoogleScriptUrl(): string {
   try {

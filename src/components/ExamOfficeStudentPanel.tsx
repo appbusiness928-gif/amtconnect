@@ -114,7 +114,7 @@ export default function ExamOfficeStudentPanel({
         .filter((b) => b && typeof b === 'string' && b.trim().length > 0)
     )
   ).sort();
-  const dbBatches = availableBatches.length > 0 ? availableBatches : ['65', '66', '67', '68'];
+  const dbBatches = availableBatches.length > 0 ? availableBatches : ['67', '68'];
 
   const getThaiDayOfWeek = (d: Date): string => {
     const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'];
@@ -176,7 +176,7 @@ export default function ExamOfficeStudentPanel({
   };
 
   // Office schedule states
-  const [schBatch, setSchBatch] = useState(() => dbBatches.includes('67') ? '67' : (dbBatches[0] || '67'));
+  const [schBatch, setSchBatch] = useState(() => dbBatches[0] || '');
   const [schCode, setSchCode] = useState('');
   const [schName, setSchName] = useState('');
   const [schDays, setSchDays] = useState<('จันทร์' | 'อังคาร' | 'พุธ' | 'พฤหัส' | 'ศุกร์' | 'เสาร์' | 'อาทิตย์')[]>(['จันทร์']);
@@ -192,13 +192,13 @@ export default function ExamOfficeStudentPanel({
   }, [isInstructor, currentUser, schTeacher]);
 
   // Exam states
-  const [exBatch, setExBatch] = useState(() => dbBatches.includes('67') ? '67' : (dbBatches[0] || '67'));
+  const [exBatch, setExBatch] = useState(() => dbBatches[0] || '');
   const [exDate, setExDate] = useState('');
   const [exTime, setExTime] = useState('09:00 - 11:30');
   const [exSubject, setExSubject] = useState('');
 
   // Grading states
-  const [gradeBatch, setGradeBatch] = useState(() => dbBatches.includes('67') ? '67' : (dbBatches[0] || '67'));
+  const [gradeBatch, setGradeBatch] = useState(() => dbBatches[0] || '');
   const [gradeSubject, setGradeSubject] = useState('');
   const [gradeRound, setGradeRound] = useState(1);
   const [studentGrades, setStudentGrades] = useState<{ [id: string]: number }>({});
@@ -332,7 +332,21 @@ export default function ExamOfficeStudentPanel({
   const [checkedStudent, setCheckedStudent] = useState<User | null>(null);
 
   // Filter batch roster
-  const [rosterBatch, setRosterBatch] = useState(() => dbBatches.includes('67') ? '67' : (dbBatches[0] || '67'));
+  const [rosterBatch, setRosterBatch] = useState(() => dbBatches[0] || '');
+
+  // Filter batch schedule
+  const [scheduleBatch, setScheduleBatch] = useState(studentBatch || dbBatches[0] || '');
+
+  // Automatically adjust selected batch states once options load/change
+  React.useEffect(() => {
+    if (dbBatches.length > 0) {
+      if (!dbBatches.includes(schBatch) || !schBatch) setSchBatch(dbBatches[0]);
+      if (!dbBatches.includes(exBatch) || !exBatch) setExBatch(dbBatches[0]);
+      if (!dbBatches.includes(gradeBatch) || !gradeBatch) setGradeBatch(dbBatches[0]);
+      if (!dbBatches.includes(rosterBatch) || !rosterBatch) setRosterBatch(dbBatches[0]);
+      if (!dbBatches.includes(scheduleBatch) || !scheduleBatch) setScheduleBatch(dbBatches[0]);
+    }
+  }, [dbBatches, schBatch, exBatch, gradeBatch, rosterBatch, scheduleBatch]);
 
   // Profile Edit states
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);
@@ -534,7 +548,12 @@ export default function ExamOfficeStudentPanel({
       Swal.fire({ icon: 'error', title: 'ไม่พบอุปกรณ์', text: 'ไม่พบเครื่องมือชิ้นนี้ในรายการ', confirmButtonColor: '#171717' });
       return;
     }
-    if (match.qty < borrowQty) {
+    const totalBorrowed = borrowRecords
+      .filter(r => r.equipmentCode === match.code && r.status !== 'Returned')
+      .reduce((sum, r) => sum + r.qty, 0);
+    const available = match.qty - totalBorrowed;
+
+    if (available < borrowQty) {
       Swal.fire({ icon: 'warning', title: 'ของไม่พอ', text: 'จำนวนอุปกรณ์ในคลังมีไม่เพียงพอต่อการยืมปฏิบัติการครั้งนี้', confirmButtonColor: '#171717' });
       return;
     }
@@ -724,7 +743,7 @@ export default function ExamOfficeStudentPanel({
               <div className="space-y-4">
                 <div className="border border-neutral-350 rounded-xl p-4 bg-white shadow-xs">
                   
-                  {/* Calendar view selector */}
+                  {/* Calendar view selector and Batch selector */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 mb-4">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 bg-neutral-900 text-white rounded-lg">
@@ -732,9 +751,8 @@ export default function ExamOfficeStudentPanel({
                       </div>
                       <div>
                         <h4 className="font-sans font-extrabold text-[12px] text-neutral-950 uppercase tracking-tight">
-                          ตารางแผนจัดวิชาเรียนและสอบประจำรุ่น (รุ่น {studentBatch})
+                          ตารางแผนจัดวิชาเรียนและสอบประจำรุ่น (รุ่น {scheduleBatch})
                         </h4>
-                        <p className="text-[9px] text-neutral-400">ระบบประมวลตารางเรียนส่วนนักศึกษาอู่การช่าง</p>
                       </div>
                     </div>
                     
@@ -830,13 +848,13 @@ export default function ExamOfficeStudentPanel({
                             const cellDayThaiName = getThaiDayOfWeek(cellDate);
 
                             const rowClassesOnThisDay = classSchedules.filter(s => {
-                              if (s.batch !== studentBatch) return false;
+                              if (s.batch !== scheduleBatch) return false;
                               const isWithinRange = (!s.startDate || currDateStr >= s.startDate) && (!s.endDate || currDateStr <= s.endDate);
                               return matchesDayOfWeek(s.dayOfWeek, cellDayThaiName) && isWithinRange;
                             });
 
                             const rowExamsOnThisDay = examSchedules.filter(ex => {
-                              return ex.batch === studentBatch && ex.date === currDateStr;
+                              return ex.batch === scheduleBatch && ex.date === currDateStr;
                             });
 
                             return (
@@ -893,7 +911,7 @@ export default function ExamOfficeStudentPanel({
                     <div className="grid grid-cols-1 sm:grid-cols-7 gap-3 animate-fade-in">
                       {DAYS_OF_WEEK_LIST.map((day) => {
                         const daySchedules = classSchedules.filter(
-                          (s) => s.batch === studentBatch && matchesDayOfWeek(s.dayOfWeek, day.key)
+                          (s) => s.batch === scheduleBatch && matchesDayOfWeek(s.dayOfWeek, day.key)
                         );
                         return (
                           <div key={day.key} className="border border-neutral-200 rounded overflow-hidden flex flex-col h-32 bg-stone-50/50 hover:shadow-2xs transition-shadow">
@@ -1702,9 +1720,17 @@ export default function ExamOfficeStudentPanel({
                       <p className="font-sans font-bold text-neutral-950">{scannedTool.toolName}</p>
                       <p className="text-[9px] text-neutral-500 font-mono">P/N: {scannedTool.partNumber} | ชั้นวาง: {scannedTool.location}</p>
                     </div>
-                    <span className="font-sans font-bold bg-neutral-950 text-white text-[10px] px-2 py-1 rounded">
-                      เหลือในสต๊อก: {scannedTool.qty} {scannedTool.qty > 0 ? 'พร้อมยืม' : 'ของหมดคลัง'}
-                    </span>
+                    {(() => {
+                      const totalBorrowed = borrowRecords
+                        .filter(r => r.equipmentCode === scannedTool.code && r.status !== 'Returned')
+                        .reduce((sum, r) => sum + r.qty, 0);
+                      const available = scannedTool.qty - totalBorrowed;
+                      return (
+                        <span className={`font-sans font-bold text-white text-[10px] px-2 py-1 rounded ${available > 0 ? 'bg-neutral-950' : 'bg-rose-600'}`}>
+                          เหลือในสต๊อก: {available} {available > 0 ? 'พร้อมยืม' : 'ของหมดคลัง'}
+                        </span>
+                      );
+                    })()}
                   </div>
                 )}
 
