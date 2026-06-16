@@ -972,7 +972,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between font-sans selection:bg-slate-900 selection:text-white no-print">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between font-sans selection:bg-slate-900 selection:text-white">
       
       {/* 1. Header component */}
       <header className="bg-[#0F172A] text-slate-100 shadow-md no-print border-b border-slate-800">
