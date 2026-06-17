@@ -11,6 +11,161 @@ import { alerts as Swal } from '../lib/alerts';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
+function oklchToRgb(oklchStr: string): string {
+  try {
+    const cleaned = oklchStr.trim().toLowerCase();
+    const match = cleaned.match(/oklch\s*\(([^)]+)\)/);
+    if (!match) return oklchStr;
+
+    const partsStr = match[1];
+    const parts = partsStr.replace(/[\/,]/g, ' ').trim().split(/\s+/);
+    if (parts.length < 3) return oklchStr;
+
+    let lVal = parts[0];
+    let cVal = parts[1];
+    let hVal = parts[2];
+    let aVal = parts[3] !== undefined ? parts[3] : "1";
+
+    let L = lVal.endsWith('%') ? parseFloat(lVal) / 100 : parseFloat(lVal);
+    let C = cVal.endsWith('%') ? parseFloat(cVal) / 100 : parseFloat(cVal);
+    
+    let H = 0;
+    if (hVal.endsWith('deg')) {
+      H = parseFloat(hVal);
+    } else if (hVal.endsWith('rad')) {
+      H = parseFloat(hVal) * (180 / Math.PI);
+    } else if (hVal.endsWith('%')) {
+      H = (parseFloat(hVal) / 100) * 360;
+    } else {
+      H = parseFloat(hVal);
+    }
+
+    let alpha = aVal.endsWith('%') ? parseFloat(aVal) / 100 : parseFloat(aVal);
+
+    if (isNaN(L) || isNaN(C) || isNaN(H)) {
+      return oklchStr;
+    }
+
+    const hRad = H * (Math.PI / 180);
+    const a = C * Math.cos(hRad);
+    const b = C * Math.sin(hRad);
+
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.2914855414 * b;
+
+    const l_linear = Math.pow(Math.max(0, l_), 3);
+    const m_linear = Math.pow(Math.max(0, m_), 3);
+    const s_linear = Math.pow(Math.max(0, s_), 3);
+
+    let r = +4.0767416621 * l_linear - 3.3077115913 * m_linear + 0.2309699292 * s_linear;
+    let g = -1.2684380046 * l_linear + 2.6097574011 * m_linear - 0.3413193965 * s_linear;
+    let b_ = -0.0041960863 * l_linear - 0.7034186147 * m_linear + 1.7076114910 * s_linear;
+
+    r = Math.max(0, Math.min(1, r));
+    g = Math.max(0, Math.min(1, g));
+    b_ = Math.max(0, Math.min(1, b_));
+
+    const rGamma = r <= 0.0031308 ? 12.92 * r : 1.055 * Math.pow(r, 1 / 2.4) - 0.055;
+    const gGamma = g <= 0.0031308 ? 12.92 * g : 1.055 * Math.pow(g, 1 / 2.4) - 0.055;
+    const bGamma = b_ <= 0.0031308 ? 12.92 * b_ : 1.055 * Math.pow(b_, 1 / 2.4) - 0.055;
+
+    const r255 = Math.max(0, Math.min(255, Math.round(rGamma * 255)));
+    const g255 = Math.max(0, Math.min(255, Math.round(gGamma * 255)));
+    const b255 = Math.max(0, Math.min(255, Math.round(bGamma * 255)));
+
+    if (isNaN(alpha) || alpha === 1) {
+      return `rgb(${r255}, ${g255}, ${b255})`;
+    } else {
+      return `rgba(${r255}, ${g255}, ${b255}, ${alpha})`;
+    }
+  } catch (err) {
+    console.error('Error converting OKLCH to RGB:', err);
+    return oklchStr;
+  }
+}
+
+// Recursively proxy CSS rules and nested rules to replace OKLCH
+function proxyRule(rule: any): any {
+  if (!rule) return rule;
+  return new Proxy(rule, {
+    get(target, prop) {
+      if (prop === 'cssText') {
+        const text = target.cssText;
+        if (typeof text === 'string' && text.includes('oklch')) {
+          try {
+            return text.replace(/oklch\s*\([^)]+\)/gi, (match: string) => oklchToRgb(match));
+          } catch (e) {
+            return text;
+          }
+        }
+      }
+      if (prop === 'cssRules' || prop === 'rules') {
+        const rules = target.cssRules;
+        if (!rules) return rules;
+        return new Proxy(rules, {
+          get(targetRules, indexProp) {
+            if (indexProp === 'length') {
+              return targetRules.length;
+            }
+            if (indexProp === 'item') {
+              return function(index: number) {
+                const r = targetRules.item(index);
+                return r ? proxyRule(r) : r;
+              };
+            }
+            const idx = Number(indexProp);
+            if (!isNaN(idx)) {
+              const r = targetRules[idx];
+              return r ? proxyRule(r) : r;
+            }
+            const val = (targetRules as any)[indexProp];
+            if (typeof val === 'function') {
+              return val.bind(targetRules);
+            }
+            return val;
+          }
+        });
+      }
+      if (prop === 'style') {
+        const style = target.style;
+        if (!style) return style;
+        return new Proxy(style, {
+          get(targetStyle, styleProp) {
+            if (styleProp === 'cssText') {
+              const text = targetStyle.cssText;
+              if (typeof text === 'string' && text.includes('oklch')) {
+                try {
+                  return text.replace(/oklch\s*\([^)]+\)/gi, (match: string) => oklchToRgb(match));
+                } catch (e) {
+                  return text;
+                }
+              }
+            }
+            const val = (targetStyle as any)[styleProp];
+            if (typeof val === 'string' && val.includes('oklch')) {
+              try {
+                return val.replace(/oklch\s*\([^)]+\)/gi, (match: string) => oklchToRgb(match));
+              } catch (e) {
+                return val;
+              }
+            }
+            if (typeof val === 'function') {
+              return val.bind(targetStyle);
+            }
+            return val;
+          }
+        });
+      }
+      const val = (target as any)[prop];
+      if (typeof val === 'function') {
+        return val.bind(target);
+      }
+      return val;
+    }
+  });
+}
+
 export const generateAndOpenPDF = async (selector: string, filename: string, orientation: 'portrait' | 'landscape' = 'portrait') => {
   const element = document.querySelector(selector);
   if (!element) {
@@ -31,31 +186,64 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     allowOutsideClick: false,
   });
 
-  // Temporarily intercept document.styleSheets to filter out rules containing oklch
-  // html2canvas parses stylesheet rules and crashes on modern Tailwind v4 oklch colors,
-  // but computed style properties are parsed correctly via getComputedStyle.
+  // Temporarily intercept window.getComputedStyle and document.styleSheets
+  const originalGetComputedStyle = window.getComputedStyle;
   const originalStyleSheets = document.styleSheets;
-  let isOverridden = false;
+  let isStyleSheetsOverridden = false;
+
+  // Intercept window.getComputedStyle to translate modern Tailwind oklch colors on the fly
+  window.getComputedStyle = function(elt, pseudoElt) {
+    const style = originalGetComputedStyle(elt, pseudoElt);
+    return new Proxy(style, {
+      get(target, prop) {
+        if (prop === 'getPropertyValue') {
+          return function(propertyName: string) {
+            const val = target.getPropertyValue(propertyName);
+            if (typeof val === 'string' && val.includes('oklch')) {
+              try {
+                return val.replace(/oklch\s*\([^)]+\)/gi, (match) => oklchToRgb(match));
+              } catch (e) {
+                return val;
+              }
+            }
+            return val;
+          };
+        }
+        const val = (target as any)[prop];
+        if (typeof val === 'string' && val.includes('oklch')) {
+          try {
+            return val.replace(/oklch\s*\([^)]+\)/gi, (match) => oklchToRgb(match));
+          } catch (e) {
+            return val;
+          }
+        }
+        if (typeof val === 'function') {
+          return val.bind(target);
+        }
+        return val;
+      }
+    });
+  };
 
   try {
-    const filteredStyleSheets = Array.from(originalStyleSheets).map(sheet => {
+    const proxiedStyleSheets = Array.from(originalStyleSheets).map(sheet => {
       try {
         if (!sheet.cssRules) {
           return sheet;
         }
-        
-        const rulesArray = Array.from(sheet.cssRules);
-        const hasOklch = rulesArray.some(rule => rule.cssText.includes('oklch'));
-        if (!hasOklch) {
-          return sheet;
-        }
-
-        const filteredRules = rulesArray.filter(rule => !rule.cssText.includes('oklch'));
-        
         return new Proxy(sheet, {
           get(target, prop) {
             if (prop === 'cssRules' || prop === 'rules') {
-              return filteredRules;
+              try {
+                const rulesArray = Array.from(target.cssRules).map(rule => proxyRule(rule));
+                const mockList = [...rulesArray] as any;
+                mockList.item = function(index: number) {
+                  return this[index];
+                };
+                return mockList;
+              } catch (innerRulesErr) {
+                return target.cssRules;
+              }
             }
             const val = (target as any)[prop];
             if (typeof val === 'function') {
@@ -65,12 +253,11 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
           }
         });
       } catch (e) {
-        // Cross-origin styles or other access restrictions
         return sheet;
       }
     });
 
-    const mockStyleSheetsList = [...filteredStyleSheets] as any;
+    const mockStyleSheetsList = [...proxiedStyleSheets] as any;
     mockStyleSheetsList.item = function(index: number) {
       return this[index];
     };
@@ -81,7 +268,7 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
       },
       configurable: true
     });
-    isOverridden = true;
+    isStyleSheetsOverridden = true;
   } catch (overrideErr) {
     console.warn('Failed to mock styleSheets for oklch filter:', overrideErr);
   }
@@ -147,12 +334,24 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     console.error('PDF generation error:', error);
     Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถสร้างไฟล์ PDF มินิลิงก์ได้: ' + error.message, 'error');
   } finally {
+    // Restore window.getComputedStyle
+    window.getComputedStyle = originalGetComputedStyle;
+
     // Restore original document.styleSheets
-    if (isOverridden) {
+    if (isStyleSheetsOverridden) {
       try {
         delete (document as any).styleSheets;
       } catch (restoreErr) {
-        console.error('Failed to restore styleSheets:', restoreErr);
+        try {
+          Object.defineProperty(document, 'styleSheets', {
+            get() {
+              return originalStyleSheets;
+            },
+            configurable: true
+          });
+        } catch (innerErr) {
+          console.error('Failed to restore styleSheets:', innerErr);
+        }
       }
     }
   }
