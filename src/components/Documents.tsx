@@ -85,6 +85,85 @@ function oklchToRgb(oklchStr: string): string {
   }
 }
 
+function oklabToRgb(oklabStr: string): string {
+  try {
+    const cleaned = oklabStr.trim().toLowerCase();
+    const match = cleaned.match(/oklab\s*\(([^)]+)\)/);
+    if (!match) return oklabStr;
+
+    const partsStr = match[1];
+    const parts = partsStr.replace(/[\/,]/g, ' ').trim().split(/\s+/);
+    if (parts.length < 3) return oklabStr;
+
+    let lVal = parts[0];
+    let aValInput = parts[1];
+    let bValInput = parts[2];
+    let alphaVal = parts[3] !== undefined ? parts[3] : "1";
+
+    let L = lVal.endsWith('%') ? parseFloat(lVal) / 100 : parseFloat(lVal);
+    let a = aValInput.endsWith('%') ? parseFloat(aValInput) / 100 : parseFloat(aValInput);
+    let b = bValInput.endsWith('%') ? parseFloat(bValInput) / 100 : parseFloat(bValInput);
+    let alpha = alphaVal.endsWith('%') ? parseFloat(alphaVal) / 100 : parseFloat(alphaVal);
+
+    if (isNaN(L) || isNaN(a) || isNaN(b)) {
+      return oklabStr;
+    }
+
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.2914855414 * b;
+
+    const l_linear = Math.pow(Math.max(0, l_), 3);
+    const m_linear = Math.pow(Math.max(0, m_), 3);
+    const s_linear = Math.pow(Math.max(0, s_), 3);
+
+    let r = +4.0767416621 * l_linear - 3.3077115913 * m_linear + 0.2309699292 * s_linear;
+    let g = -1.2684380046 * l_linear + 2.6097574011 * m_linear - 0.3413193965 * s_linear;
+    let b_ = -0.0041960863 * l_linear - 0.7034186147 * m_linear + 1.7076114910 * s_linear;
+
+    r = Math.max(0, Math.min(1, r));
+    g = Math.max(0, Math.min(1, g));
+    b_ = Math.max(0, Math.min(1, b_));
+
+    const rGamma = r <= 0.0031308 ? 12.92 * r : 1.055 * Math.pow(r, 1 / 2.4) - 0.055;
+    const gGamma = g <= 0.0031308 ? 12.92 * g : 1.055 * Math.pow(g, 1 / 2.4) - 0.055;
+    const bGamma = b_ <= 0.0031308 ? 12.92 * b_ : 1.055 * Math.pow(b_, 1 / 2.4) - 0.055;
+
+    const r255 = Math.max(0, Math.min(255, Math.round(rGamma * 255)));
+    const g255 = Math.max(0, Math.min(255, Math.round(gGamma * 255)));
+    const b255 = Math.max(0, Math.min(255, Math.round(bGamma * 255)));
+
+    if (isNaN(alpha) || alpha === 1) {
+      return `rgb(${r255}, ${g255}, ${b255})`;
+    } else {
+      return `rgba(${r255}, ${g255}, ${b255}, ${alpha})`;
+    }
+  } catch (err) {
+    console.error('Error converting OKLAB to RGB:', err);
+    return oklabStr;
+  }
+}
+
+function convertStyles(val: string): string {
+  if (typeof val !== 'string') return val;
+  let text = val;
+  if (text.includes('oklch')) {
+    try {
+      text = text.replace(/oklch\s*\([^)]+\)/gi, (match: string) => oklchToRgb(match));
+    } catch (e) {
+      // ignore
+    }
+  }
+  if (text.includes('oklab')) {
+    try {
+      text = text.replace(/oklab\s*\([^)]+\)/gi, (match: string) => oklabToRgb(match));
+    } catch (e) {
+      // ignore
+    }
+  }
+  return text;
+}
+
 // Recursively proxy CSS rules and nested rules to replace OKLCH
 function proxyRule(rule: any): any {
   if (!rule) return rule;
@@ -92,13 +171,7 @@ function proxyRule(rule: any): any {
     get(target, prop) {
       if (prop === 'cssText') {
         const text = target.cssText;
-        if (typeof text === 'string' && text.includes('oklch')) {
-          try {
-            return text.replace(/oklch\s*\([^)]+\)/gi, (match: string) => oklchToRgb(match));
-          } catch (e) {
-            return text;
-          }
-        }
+        return typeof text === 'string' ? convertStyles(text) : text;
       }
       if (prop === 'cssRules' || prop === 'rules') {
         const rules = target.cssRules;
@@ -134,21 +207,11 @@ function proxyRule(rule: any): any {
           get(targetStyle, styleProp) {
             if (styleProp === 'cssText') {
               const text = targetStyle.cssText;
-              if (typeof text === 'string' && text.includes('oklch')) {
-                try {
-                  return text.replace(/oklch\s*\([^)]+\)/gi, (match: string) => oklchToRgb(match));
-                } catch (e) {
-                  return text;
-                }
-              }
+              return typeof text === 'string' ? convertStyles(text) : text;
             }
             const val = (targetStyle as any)[styleProp];
-            if (typeof val === 'string' && val.includes('oklch')) {
-              try {
-                return val.replace(/oklch\s*\([^)]+\)/gi, (match: string) => oklchToRgb(match));
-              } catch (e) {
-                return val;
-              }
+            if (typeof val === 'string') {
+              return convertStyles(val);
             }
             if (typeof val === 'function') {
               return val.bind(targetStyle);
@@ -166,10 +229,44 @@ function proxyRule(rule: any): any {
   });
 }
 
+
+export const ensureInteractionRestored = () => {
+  try {
+    if (document.body) {
+      document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+    if (document.documentElement) {
+      document.documentElement.classList.remove('swal2-shown', 'swal2-height-auto');
+    }
+    
+    const swalContainers = document.querySelectorAll('.swal2-container');
+    swalContainers.forEach(container => {
+      const popup = container.querySelector('.swal2-popup');
+      if (!popup || !popup.classList.contains('swal2-show')) {
+        container.remove();
+      }
+    });
+
+    const h2cContainers = document.querySelectorAll('.html2canvas-container');
+    h2cContainers.forEach(container => container.remove());
+  } catch (err) {
+    console.warn('Error during interaction restoration:', err);
+  }
+};
+
 export const generateAndOpenPDF = async (selector: string, filename: string, orientation: 'portrait' | 'landscape' = 'portrait') => {
   const element = document.querySelector(selector);
   if (!element) {
-    Swal.fire('ข้อผิดพลาด', 'ไม่พบส่วนเนื้อหาเอกสารที่ต้องการสร้าง PDF', 'error');
+    Swal.fire({
+      title: 'ข้อผิดพลาด',
+      text: 'ไม่พบส่วนเนื้อหาเอกสารที่ต้องการสร้าง PDF',
+      icon: 'error',
+      didClose: () => {
+        ensureInteractionRestored();
+      }
+    });
     return;
   }
 
@@ -191,7 +288,7 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
   const originalStyleSheets = document.styleSheets;
   let isStyleSheetsOverridden = false;
 
-  // Intercept window.getComputedStyle to translate modern Tailwind oklch colors on the fly
+  // Intercept window.getComputedStyle to translate modern Tailwind oklch and oklab colors on the fly
   window.getComputedStyle = function(elt, pseudoElt) {
     const style = originalGetComputedStyle(elt, pseudoElt);
     return new Proxy(style, {
@@ -199,23 +296,12 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
         if (prop === 'getPropertyValue') {
           return function(propertyName: string) {
             const val = target.getPropertyValue(propertyName);
-            if (typeof val === 'string' && val.includes('oklch')) {
-              try {
-                return val.replace(/oklch\s*\([^)]+\)/gi, (match) => oklchToRgb(match));
-              } catch (e) {
-                return val;
-              }
-            }
-            return val;
+            return typeof val === 'string' ? convertStyles(val) : val;
           };
         }
         const val = (target as any)[prop];
-        if (typeof val === 'string' && val.includes('oklch')) {
-          try {
-            return val.replace(/oklch\s*\([^)]+\)/gi, (match) => oklchToRgb(match));
-          } catch (e) {
-            return val;
-          }
+        if (typeof val === 'string') {
+          return convertStyles(val);
         }
         if (typeof val === 'function') {
           return val.bind(target);
@@ -321,6 +407,9 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
       confirmButtonText: 'ปิดหน้าต่าง',
       customClass: {
         confirmButton: 'bg-neutral-900 text-white px-5 py-2 rounded-md font-sans text-xs font-bold'
+      },
+      didClose: () => {
+        ensureInteractionRestored();
       }
     });
     
@@ -332,15 +421,26 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     }
   } catch (error: any) {
     console.error('PDF generation error:', error);
-    Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถสร้างไฟล์ PDF มินิลิงก์ได้: ' + error.message, 'error');
+    Swal.fire({
+      title: 'เกิดข้อผิดพลาด',
+      text: 'ไม่สามารถสร้างไฟล์ PDF มินิลิงก์ได้: ' + error.message,
+      icon: 'error',
+      didClose: () => {
+        ensureInteractionRestored();
+      }
+    });
   } finally {
     // Restore window.getComputedStyle
     window.getComputedStyle = originalGetComputedStyle;
 
-    // Restore original document.styleSheets
+    // Restore original document.styleSheets safely
     if (isStyleSheetsOverridden) {
       try {
-        delete (document as any).styleSheets;
+        Object.defineProperty(document, 'styleSheets', {
+          value: originalStyleSheets,
+          writable: true,
+          configurable: true
+        });
       } catch (restoreErr) {
         try {
           Object.defineProperty(document, 'styleSheets', {
@@ -354,6 +454,8 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
         }
       }
     }
+
+    setTimeout(ensureInteractionRestored, 150);
   }
 };
 
@@ -401,21 +503,31 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
       Swal.fire({
         title: 'สำเร็จ!',
         html: `เอกสารบันทึกลงระบบ Google Drive เรียบร้อยแล้ว!<br/><span class="text-xs text-neutral-500 font-sans">สามารถตรวจสอบและดาวน์โหลดได้ที่โฟลเดอร์ Google Drive หลักของท่าน</span>`,
-        icon: 'success'
+        icon: 'success',
+        didClose: () => {
+          ensureInteractionRestored();
+        }
       });
     } else {
-      Swal.fire('ล้มเหลว', result.message, 'error');
+      Swal.fire({
+        title: 'ล้มเหลว',
+        text: result.message,
+        icon: 'error',
+        didClose: () => {
+          ensureInteractionRestored();
+        }
+      });
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden flex flex-col border border-neutral-200">
-        <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print">
+        <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print relative z-50">
           <span className="text-xs font-mono font-bold">AMT CONNECT ID CARD ENGINE</span>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white text-xs cursor-pointer font-medium"
+            className="text-neutral-400 hover:text-white text-xs cursor-pointer font-medium relative z-50"
           >
             ปิด
           </button>
@@ -645,10 +757,20 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
       Swal.fire({
         title: 'สำเร็จ!',
         html: `เอกสารบันทึกลงระบบ Google Drive เรียบร้อยแล้ว!<br/><span class="text-xs text-neutral-500 font-sans">สามารถตรวจสอบและดาวน์โหลดได้ที่โฟลเดอร์ Google Drive หลักของท่าน</span>`,
-        icon: 'success'
+        icon: 'success',
+        didClose: () => {
+          ensureInteractionRestored();
+        }
       });
     } else {
-      Swal.fire('ล้มเหลว', result.message, 'error');
+      Swal.fire({
+        title: 'ล้มเหลว',
+        text: result.message,
+        icon: 'error',
+        didClose: () => {
+          ensureInteractionRestored();
+        }
+      });
     }
   };
 
@@ -818,14 +940,14 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col border border-neutral-200">
-        <div className="bg-neutral-950 text-white p-4 flex items-center justify-between no-print">
+        <div className="bg-neutral-950 text-white p-4 flex items-center justify-between no-print relative z-50">
           <div>
             <h3 className="font-sans font-bold text-sm">พิมพ์เอกสารขออนุมัติใช้ห้อง (TLTC-MO-033)</h3>
             <p className="font-mono text-xs text-neutral-400">AMT-DOCUMENT GENERATOR SYSTEM</p>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-1 hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+            className="text-neutral-400 hover:text-white p-1 hover:bg-neutral-800 rounded transition-colors cursor-pointer relative z-50"
           >
             <X size={18} />
           </button>
@@ -1201,10 +1323,20 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
       Swal.fire({
         title: 'สำเร็จ!',
         html: `เอกสารบันทึกลงระบบ Google Drive เรียบร้อยแล้ว!<br/><span class="text-xs text-neutral-500 font-sans">สามารถตรวจสอบและดาวน์โหลดได้ที่โฟลเดอร์ Google Drive หลักของท่าน</span>`,
-        icon: 'success'
+        icon: 'success',
+        didClose: () => {
+          ensureInteractionRestored();
+        }
       });
     } else {
-      Swal.fire('ล้มเหลว', result.message, 'error');
+      Swal.fire({
+        title: 'ล้มเหลว',
+        text: result.message,
+        icon: 'error',
+        didClose: () => {
+          ensureInteractionRestored();
+        }
+      });
     }
   };
 
@@ -1243,14 +1375,14 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
       `}</style>
 
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col border border-neutral-200">
-        <div className="bg-neutral-950 text-white p-4 flex items-center justify-between no-print">
+        <div className="bg-neutral-950 text-white p-4 flex items-center justify-between no-print relative z-50">
           <div>
             <h3 className="font-sans font-bold text-sm">พิมพ์สมุดบันทึกการใช้ห้อง (TLTC-MO-034)</h3>
             <p className="font-mono text-xs text-neutral-400">AMT-DOCUMENT GENERATOR SYSTEM</p>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-1 hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+            className="text-neutral-400 hover:text-white p-1 hover:bg-neutral-800 rounded transition-colors cursor-pointer relative z-50"
           >
             <X size={18} />
           </button>
@@ -1455,10 +1587,20 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
       Swal.fire({
         title: 'สำเร็จ!',
         html: `เอกสารบันทึกลงระบบ Google Drive เรียบร้อยแล้ว!<br/><span class="text-xs text-neutral-500 font-sans">สามารถตรวจสอบและดาวน์โหลดได้ที่โฟลเดอร์ Google Drive หลักของท่าน</span>`,
-        icon: 'success'
+        icon: 'success',
+        didClose: () => {
+          ensureInteractionRestored();
+        }
       });
     } else {
-      Swal.fire('ล้มเหลว', result.message, 'error');
+      Swal.fire({
+        title: 'ล้มเหลว',
+        text: result.message,
+        icon: 'error',
+        didClose: () => {
+          ensureInteractionRestored();
+        }
+      });
     }
   };
 
@@ -1487,14 +1629,14 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
       `}</style>
 
       <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl overflow-hidden flex flex-col border border-neutral-200">
-        <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print">
+        <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print relative z-50">
           <div className="flex items-center gap-2">
             <span className="bg-rose-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">PDF GENERATOR</span>
             <span className="text-xs font-mono font-bold uppercase tracking-wider">สมุดทะเบียนการยืม-คืนเครื่องมือช่างอากาศยาน (TLTC-MO-001) [แนวนอน]</span>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white text-xs cursor-pointer font-extrabold flex items-center gap-1 border border-neutral-700 px-2.5 py-1 rounded"
+            className="text-neutral-400 hover:text-white text-xs cursor-pointer font-extrabold flex items-center gap-1 border border-neutral-700 px-2.5 py-1 rounded relative z-50"
           >
             <X size={12} />
             <span>ปิด</span>
