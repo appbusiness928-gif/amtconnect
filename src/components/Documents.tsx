@@ -63,7 +63,7 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
   return (
     <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden flex flex-col border border-neutral-200">
-        <div className="bg-neutral-950 text-white p-3 flex items-center justify-between">
+        <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print">
           <span className="text-xs font-mono font-bold">AMT CONNECT ID CARD ENGINE</span>
           <button
             onClick={onClose}
@@ -153,7 +153,7 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
           </div>
         </div>
 
-        <div className="bg-neutral-50 p-3 flex justify-end gap-2 border-t border-neutral-200">
+        <div className="bg-neutral-50 p-3 flex justify-end gap-2 border-t border-neutral-200 no-print">
           <button
             onClick={handleSaveToDrive}
             className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-1.5 px-3 rounded-md transition-colors cursor-pointer"
@@ -463,7 +463,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col border border-neutral-200">
-        <div className="bg-neutral-950 text-white p-4 flex items-center justify-between">
+        <div className="bg-neutral-950 text-white p-4 flex items-center justify-between no-print">
           <div>
             <h3 className="font-sans font-bold text-sm">พิมพ์เอกสารขออนุมัติใช้ห้อง (TLTC-MO-033)</h3>
             <p className="font-mono text-xs text-neutral-400">AMT-DOCUMENT GENERATOR SYSTEM</p>
@@ -774,7 +774,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
           </div>
         </div>
 
-        <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 flex-wrap">
+        <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 flex-wrap no-print">
           {onRecordUsage && isRequester && (
             <button
               onClick={promptRecordUsage}
@@ -881,7 +881,7 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
       `}</style>
 
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col border border-neutral-200">
-        <div className="bg-neutral-950 text-white p-4 flex items-center justify-between">
+        <div className="bg-neutral-950 text-white p-4 flex items-center justify-between no-print">
           <div>
             <h3 className="font-sans font-bold text-sm">พิมพ์สมุดบันทึกการใช้ห้อง (TLTC-MO-034)</h3>
             <p className="font-mono text-xs text-neutral-400">AMT-DOCUMENT GENERATOR SYSTEM</p>
@@ -1031,7 +1031,7 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
           </div>
         </div>
 
-        <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2">
+        <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 no-print">
           <button
             onClick={handleSaveToDrive}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
@@ -1118,7 +1118,7 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
       `}</style>
 
       <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl overflow-hidden flex flex-col border border-neutral-200">
-        <div className="bg-neutral-950 text-white p-3 flex items-center justify-between">
+        <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print">
           <div className="flex items-center gap-2">
             <span className="bg-rose-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">PDF GENERATOR</span>
             <span className="text-xs font-mono font-bold uppercase tracking-wider">สมุดทะเบียนการยืม-คืนเครื่องมือช่างอากาศยาน (TLTC-MO-001) [แนวนอน]</span>
