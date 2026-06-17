@@ -383,23 +383,23 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     await worker.save();
 
     Swal.fire({
-      title: 'สร้างลิงก์และเอกสารสำเร็จ!',
+      title: 'จัดเตรียมเอกสารและดาวน์โหลดสำเร็จ!',
       html: `
         <div class="text-center font-sans space-y-3.5 pt-2">
-          <p class="text-sm text-neutral-600">ได้ทำการจัดทำรูปเล่ม PDF และคลิกดาวน์โหลดเข้าสู่ระบบของท่านเรียบร้อยแล้ว</p>
+          <p class="text-sm text-neutral-600">ได้ทำการจัดทำรูปเล่ม PDF และทำการดาวน์โหลดเข้าสู่เครื่องของท่านเรียบร้อยแล้ว</p>
           
           <div class="p-3 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-emerald-100">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            สถานะ: สร้างลิงก์โฮสต์ PDF สำเร็จ!
+            สถานะ: ดาวน์โหลดเอกสาร PDF สำเร็จ!
           </div>
           
-          <p class="text-[11px] text-neutral-400">กรณีที่ดาวน์โหลดไม่เริ่มทำงานโดยอัตโนมัติ หรือท่านต้องการเปิดดูผ่านเว็บเบราว์เซอร์ด้วยลิงก์ URL กรุณาคลิกปุ่มแชร์เว็บลิงก์ด้านล่างเพื่อแสดงเอกสาร</p>
+          <p class="text-[11px] text-neutral-400">กรณีที่ดาวน์โหลดไม่เริ่มทำงานโดยอัตโนมัติ หรือท่านต้องการเปิดดูผ่านเว็บเบราว์เซอร์ กรุณาคลิกปุ่มด้านล่างเพื่อแสดงเอกสาร</p>
           
           <a href="${blobUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-all text-xs cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
-            เปิดลิงก์แสดงไฟล์เอกสาร PDF (A4)
+            เปิดแสดงไฟล์เอกสาร PDF (A4)
           </a>
         </div>
       `,
@@ -619,7 +619,7 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-1.5 px-3 rounded-md transition-all hover:shadow-sm cursor-pointer"
           >
             <FileDown size={13} />
-            <span>สร้างลิงก์ PDF</span>
+            <span>ดาวน์โหลดเอกสาร PDF</span>
           </button>
           <button
             onClick={handleSaveToDrive}
@@ -1266,7 +1266,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
             className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
           >
             <FileDown size={14} />
-            <span>สร้างลิงก์ PDF (A4)</span>
+            <span>ดาวน์โหลดเอกสาร PDF (A4)</span>
           </button>
           <button
             onClick={handleSaveToDrive}
@@ -1531,7 +1531,7 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
             className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
           >
             <FileDown size={14} />
-            <span>สร้างลิงก์ PDF แนวนอน</span>
+            <span>ดาวน์โหลดเอกสาร PDF แนวนอน</span>
           </button>
           <button
             onClick={handleSaveToDrive}
@@ -1855,7 +1855,7 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
             className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold py-2.5 px-5 rounded transition-transform duration-100 active:scale-95 cursor-pointer shadow-sm"
           >
             <FileDown size={14} />
-            <span>สร้างลิงก์ PDF แนวนอน</span>
+            <span>ดาวน์โหลดเอกสาร PDF แนวนอน</span>
           </button>
           <button
             onClick={handleSaveToDrive}
