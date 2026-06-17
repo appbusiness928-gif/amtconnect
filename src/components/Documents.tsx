@@ -1642,118 +1642,6 @@ interface TraceabilityToolsLogDocProps {
 
 export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsLogDocProps) {
   const managerInfo = getMaintenanceManagerInfo();
-  const [isWorking, setIsWorking] = React.useState(false);
-
-  const handlePrint = async () => {
-    if (isWorking) return;
-    setIsWorking(true);
-    try {
-      await syncWithGoogleSheets(APIService.getDb()).catch(() => {});
-      window.print();
-    } finally {
-      setIsWorking(false);
-    }
-  };
-
-  const handleDownloadPDF = async () => {
-    if (isWorking) return;
-    setIsWorking(true);
-    try {
-      await generateAndOpenPDF('.print-landscape-mo001', 'สมุดทะเบียนยืมคืนเครื่องมือ_TLTC-MO-001.pdf', 'landscape');
-    } finally {
-      setIsWorking(false);
-    }
-  };
-
-  const handleSaveToDrive = async () => {
-    if (isWorking) return;
-    setIsWorking(true);
-    Swal.fire({
-      title: 'กำลังบันทึกลง Google Drive...',
-      text: 'กรุณารอสักครู่ ระบบกำลังจัดทำชุดเอกสาร PDF บันทึกลงเครื่อง และอัปโหลดไปยังคลาวด์ไดรฟ์',
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
-    });
-
-    const cardEl = document.querySelector('.print-landscape-mo001');
-    if (!cardEl) {
-      Swal.fire({
-        title: 'ข้อผิดพลาด',
-        text: 'ไม่พบสมุดทะเบียนข้อมูลที่ต้องการพิมพ์',
-        icon: 'error',
-        didClose: () => {
-          ensureInteractionRestored();
-        }
-      });
-      setIsWorking(false);
-      return;
-    }
-
-    // Download locally first side-by-side to comply with dual direct accessibility
-    try {
-      await generateAndOpenPDF('.print-landscape-mo001', 'สมุดทะเบียนยืมคืนเครื่องมือ_TLTC-MO-001.pdf', 'landscape');
-    } catch (e) {
-      console.warn('Local PDF download fallback:', e);
-    }
-
-    try {
-      const htmlContent = cardEl.outerHTML;
-      const result = await uploadToGoogleDrive(`สมุดทะเบียนยืมคืนเครื่องมือ_TLTC-MO-001.pdf`, htmlContent);
-      if (result.success) {
-        Swal.fire({
-          title: 'ดาวน์โหลดและบันทึกสำเร็จ!',
-          html: `
-            <div class="text-center font-sans space-y-3 pt-1">
-              <p class="text-xs text-neutral-600">ได้ทำการดาวน์โหลดเอกสารลงตัวเครื่องและบันทึกลง Google Drive มินิโฟลเดอร์ของท่านเรียบร้อยแล้ว!</p>
-              
-              <div class="my-3.5 p-3 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-emerald-100">
-                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                สถานะ: พร้อมเข้าดูและแก้ไขใน Google Drive ได้ทันที
-              </div>
-              
-              <a href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-all text-xs cursor-pointer">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                เปิดไดรฟ์เพื่อดูไฟล์เอกสาร (Google Drive)
-              </a>
-            </div>
-          `,
-          icon: 'success',
-          confirmButtonText: 'ปิด',
-          customClass: {
-            confirmButton: 'bg-neutral-900 text-white px-5 py-2 rounded-md font-sans text-xs font-bold'
-          },
-          didClose: () => {
-            ensureInteractionRestored();
-          }
-        });
-      } else {
-        Swal.fire({
-          title: 'บันทึกเกลียวไดรฟ์ไม่สำเร็จ',
-          text: result.message,
-          icon: 'error',
-          didClose: () => {
-            ensureInteractionRestored();
-          }
-        });
-      }
-    } catch (error: any) {
-      console.error('Tools Log save Drive error:', error);
-      Swal.fire({
-        title: 'เกิดข้อผิดพลาด',
-        text: 'ไม่สามารถบันทึกลงคลาวด์ไดรฟ์ได้: ' + error.message,
-        icon: 'error',
-        didClose: () => {
-          ensureInteractionRestored();
-        }
-      });
-    } finally {
-      setIsWorking(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print animate-fade-in">
@@ -1786,9 +1674,8 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
             <span className="text-xs font-mono font-bold uppercase tracking-wider">สมุดทะเบียนการยืม-คืนเครื่องมือช่างอากาศยาน (TLTC-MO-001) [แนวนอน]</span>
           </div>
           <button
-            onClick={isWorking ? undefined : onClose}
-            disabled={isWorking}
-            className={`text-neutral-400 text-xs font-extrabold flex items-center gap-1 border border-neutral-700 px-2.5 py-1 rounded relative z-50 transition-colors ${isWorking ? 'opacity-30 cursor-not-allowed' : 'hover:text-white cursor-pointer'}`}
+            onClick={onClose}
+            className="text-neutral-400 hover:text-white text-xs font-extrabold flex items-center gap-1 border border-neutral-700 px-2.5 py-1 rounded relative z-50 transition-colors cursor-pointer"
           >
             <X size={12} />
             <span>ปิด</span>
@@ -2001,32 +1888,7 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
           </div>
         </div>
 
-        <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 no-print">
-          <button
-            onClick={handleDownloadPDF}
-            disabled={isWorking}
-            className={`flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold py-2.5 px-5 rounded transition-transform duration-100 active:scale-95 shadow-sm ${isWorking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <FileDown size={14} />
-            <span>ดาวน์โหลดเอกสาร PDF แนวนอน</span>
-          </button>
-          <button
-            onClick={handleSaveToDrive}
-            disabled={isWorking}
-            className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-2.5 px-5 rounded transition-transform duration-100 active:scale-95 shadow-sm ${isWorking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <Cloud size={14} />
-            <span>บันทึกลง Google Drive</span>
-          </button>
-          <button
-            onClick={handlePrint}
-            disabled={isWorking}
-            className={`flex items-center gap-2 bg-neutral-950 hover:bg-neutral-850 text-white font-sans text-xs font-bold py-2.5 px-5 rounded transition-transform duration-100 active:scale-95 shadow-sm ${isWorking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <Printer size={14} />
-            <span>สั่งพิมพ์รายงาน (A4 PDF แนวนอน)</span>
-          </button>
-        </div>
+
       </div>
     </div>
   );
