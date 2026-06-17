@@ -31,6 +31,61 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     allowOutsideClick: false,
   });
 
+  // Temporarily intercept document.styleSheets to filter out rules containing oklch
+  // html2canvas parses stylesheet rules and crashes on modern Tailwind v4 oklch colors,
+  // but computed style properties are parsed correctly via getComputedStyle.
+  const originalStyleSheets = document.styleSheets;
+  let isOverridden = false;
+
+  try {
+    const filteredStyleSheets = Array.from(originalStyleSheets).map(sheet => {
+      try {
+        if (!sheet.cssRules) {
+          return sheet;
+        }
+        
+        const rulesArray = Array.from(sheet.cssRules);
+        const hasOklch = rulesArray.some(rule => rule.cssText.includes('oklch'));
+        if (!hasOklch) {
+          return sheet;
+        }
+
+        const filteredRules = rulesArray.filter(rule => !rule.cssText.includes('oklch'));
+        
+        return new Proxy(sheet, {
+          get(target, prop) {
+            if (prop === 'cssRules' || prop === 'rules') {
+              return filteredRules;
+            }
+            const val = (target as any)[prop];
+            if (typeof val === 'function') {
+              return val.bind(target);
+            }
+            return val;
+          }
+        });
+      } catch (e) {
+        // Cross-origin styles or other access restrictions
+        return sheet;
+      }
+    });
+
+    const mockStyleSheetsList = [...filteredStyleSheets] as any;
+    mockStyleSheetsList.item = function(index: number) {
+      return this[index];
+    };
+
+    Object.defineProperty(document, 'styleSheets', {
+      get() {
+        return mockStyleSheetsList;
+      },
+      configurable: true
+    });
+    isOverridden = true;
+  } catch (overrideErr) {
+    console.warn('Failed to mock styleSheets for oklch filter:', overrideErr);
+  }
+
   try {
     const opt = {
       margin:       orientation === 'portrait' ? [12, 10, 12, 10] : [10, 10, 10, 10],
@@ -91,6 +146,15 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
   } catch (error: any) {
     console.error('PDF generation error:', error);
     Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถสร้างไฟล์ PDF มินิลิงก์ได้: ' + error.message, 'error');
+  } finally {
+    // Restore original document.styleSheets
+    if (isOverridden) {
+      try {
+        delete (document as any).styleSheets;
+      } catch (restoreErr) {
+        console.error('Failed to restore styleSheets:', restoreErr);
+      }
+    }
   }
 };
 
