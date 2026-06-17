@@ -4,10 +4,95 @@
  */
 
 import React from 'react';
-import { Printer, X, Award, ShieldAlert, CheckCircle, FileText, Cloud } from 'lucide-react';
+import { Printer, X, Award, ShieldAlert, CheckCircle, FileText, Cloud, FileDown, ExternalLink } from 'lucide-react';
 import { User, RoomRequest, RoomUsageRecord, BorrowRecord } from '../types';
 import { getAppOriginForQR, APIService, syncWithGoogleSheets, uploadToGoogleDrive } from '../lib/api';
 import { alerts as Swal } from '../lib/alerts';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
+
+export const generateAndOpenPDF = async (selector: string, filename: string, orientation: 'portrait' | 'landscape' = 'portrait') => {
+  const element = document.querySelector(selector);
+  if (!element) {
+    Swal.fire('ข้อผิดพลาด', 'ไม่พบส่วนเนื้อหาเอกสารที่ต้องการสร้าง PDF', 'error');
+    return;
+  }
+
+  Swal.fire({
+    title: 'กำลังจัดเตรียมไฟล์ PDF...',
+    html: `
+      <div class="flex flex-col items-center justify-center p-3 font-sans">
+        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p class="text-sm text-neutral-700 font-bold mb-1">กำลังประมวลผลเอกสารสถาบัน</p>
+        <p class="text-xs text-neutral-500 text-center">ระบบกำลังเรนเดอร์กราฟิกและแปลงเป็นอินทิเกรตลิงก์ PDF กรุณารอสักครู่...</p>
+      </div>
+    `,
+    showConfirmButton: false,
+    allowOutsideClick: false,
+  });
+
+  try {
+    const opt = {
+      margin:       orientation === 'portrait' ? [12, 10, 12, 10] : [10, 10, 10, 10],
+      filename:     filename,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#FFFFFF',
+        logging: false
+      },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: orientation }
+    };
+
+    // @ts-ignore
+    const worker = html2pdf().set(opt).from(element);
+    
+    // Generate direct blob url for live view/link
+    const blobUrl = await worker.output('bloburl');
+    
+    // Trigger local download
+    await worker.save();
+
+    Swal.fire({
+      title: 'สร้างลิงก์และเอกสารสำเร็จ!',
+      html: `
+        <div class="text-center font-sans space-y-3.5 pt-2">
+          <p class="text-sm text-neutral-600">ได้ทำการจัดทำรูปเล่ม PDF และคลิกดาวน์โหลดเข้าสู่ระบบของท่านเรียบร้อยแล้ว</p>
+          
+          <div class="p-3 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-emerald-100">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            สถานะ: สร้างลิงก์โฮสต์ PDF สำเร็จ!
+          </div>
+          
+          <p class="text-[11px] text-neutral-400">กรณีที่ดาวน์โหลดไม่เริ่มทำงานโดยอัตโนมัติ หรือท่านต้องการเปิดดูผ่านเว็บเบราว์เซอร์ด้วยลิงก์ URL กรุณาคลิกปุ่มแชร์เว็บลิงก์ด้านล่างเพื่อแสดงเอกสาร</p>
+          
+          <a href="${blobUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-all text-xs cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            เปิดลิงก์แสดงไฟล์เอกสาร PDF (A4)
+          </a>
+        </div>
+      `,
+      icon: 'success',
+      confirmButtonText: 'ปิดหน้าต่าง',
+      customClass: {
+        confirmButton: 'bg-neutral-900 text-white px-5 py-2 rounded-md font-sans text-xs font-bold'
+      }
+    });
+    
+    // Auto-open in tab
+    try {
+      window.open(blobUrl, '_blank');
+    } catch (e) {
+      console.warn('Auto popup blocked:', e);
+    }
+  } catch (error: any) {
+    console.error('PDF generation error:', error);
+    Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถสร้างไฟล์ PDF มินิลิงก์ได้: ' + error.message, 'error');
+  }
+};
 
 export function ThalangLogo({ className = "w-16 h-16" }: { className?: string }) {
   return (
@@ -153,7 +238,14 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
           </div>
         </div>
 
-        <div className="bg-neutral-50 p-3 flex justify-end gap-2 border-t border-neutral-200 no-print">
+        <div className="bg-neutral-50 p-3 flex justify-end gap-2 border-t border-neutral-200 no-print flex-wrap">
+          <button
+            onClick={() => generateAndOpenPDF('.print-card', `บัตรประจำตัว_${user.firstName}_${user.id}.pdf`, 'portrait')}
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-1.5 px-3 rounded-md transition-all hover:shadow-sm cursor-pointer"
+          >
+            <FileDown size={13} />
+            <span>สร้างลิงก์ PDF</span>
+          </button>
           <button
             onClick={handleSaveToDrive}
             className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-1.5 px-3 rounded-md transition-colors cursor-pointer"
@@ -785,6 +877,13 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
             </button>
           )}
           <button
+            onClick={() => generateAndOpenPDF('.print-card', `ใบขอใช้ห้อง_${request.room}_${request.date}.pdf`, 'portrait')}
+            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <FileDown size={14} />
+            <span>สร้างลิงก์ PDF (A4)</span>
+          </button>
+          <button
             onClick={handleSaveToDrive}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
           >
@@ -1032,6 +1131,13 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
         </div>
 
         <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 no-print">
+          <button
+            onClick={() => generateAndOpenPDF('.print-landscape', 'สมุดบันทึกการใช้ห้อง_TLTC-MO-034.pdf', 'landscape')}
+            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <FileDown size={14} />
+            <span>สร้างลิงก์ PDF แนวนอน</span>
+          </button>
           <button
             onClick={handleSaveToDrive}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
@@ -1339,6 +1445,13 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
         </div>
 
         <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 no-print">
+          <button
+            onClick={() => generateAndOpenPDF('.print-landscape-mo001', 'สมุดทะเบียนยืมคืนเครื่องมือ_TLTC-MO-001.pdf', 'landscape')}
+            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold py-2.5 px-5 rounded transition-transform duration-100 active:scale-95 cursor-pointer shadow-sm"
+          >
+            <FileDown size={14} />
+            <span>สร้างลิงก์ PDF แนวนอน</span>
+          </button>
           <button
             onClick={handleSaveToDrive}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-2.5 px-5 rounded transition-transform duration-100 active:scale-95 cursor-pointer shadow-sm"
