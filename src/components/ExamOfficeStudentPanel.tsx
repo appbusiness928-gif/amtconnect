@@ -352,6 +352,7 @@ export default function ExamOfficeStudentPanel({
 
   // Profile Edit states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [tableDate, setTableDate] = useState(new Date().toISOString().split('T')[0]);
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);
   const [editLastName, setEditLastName] = useState(currentUser.lastName);
   const [editEmail, setEditEmail] = useState(currentUser.email);
@@ -756,6 +757,20 @@ export default function ExamOfficeStudentPanel({
           <BookOpen size={14} />
           <span>เอกสารคำขอของฉัน</span>
         </button>
+
+        {isStudent && (
+          <button
+            id="seoEditProfileBtn"
+            onClick={() => {
+              setActiveTab('profile');
+              setIsEditingProfile(true);
+            }}
+            className="w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100"
+          >
+            <Edit3 size={14} />
+            <span>แก้ไขข้อมูลส่วนตัว</span>
+          </button>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -887,16 +902,7 @@ export default function ExamOfficeStudentPanel({
               </div>
 
               <div className="pt-3 border-t flex justify-end gap-2">
-                {!isEditingProfile ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingProfile(true)}
-                    className="flex items-center gap-1 bg-emerald-650 hover:bg-emerald-700 text-white px-4 py-1.5 rounded font-bold cursor-pointer text-[10px] shadow-sm transition-colors"
-                  >
-                    <Edit3 size={12} />
-                    <span>แก้ไขข้อมูลส่วนตัว</span>
-                  </button>
-                ) : (
+                {isEditingProfile && (
                   <>
                     <button
                       type="button"
@@ -942,6 +948,52 @@ export default function ExamOfficeStudentPanel({
                 <span className="text-[9px] text-[#0F172A] font-bold mt-0.5">{currentUser.id}</span>
               </div>
             </div>
+
+            {/* NEW ADDED SECTION: Schedule Table */}
+            <div className="border border-neutral-300 rounded-lg p-4 bg-white shadow-sm space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <h4 className="font-bold text-neutral-900 text-xs">ตารางเรียนตามวันที่ที่เลือก</h4>
+                <input
+                  type="date"
+                  value={tableDate}
+                  onChange={(e) => setTableDate(e.target.value)}
+                  className="border border-neutral-300 px-2 py-1 rounded text-xs font-mono"
+                />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[11px]">
+                  <thead>
+                    <tr className="border-b bg-stone-50">
+                      <th className="p-2">รหัสวิชา</th>
+                      <th className="p-2">ชื่อวิชา</th>
+                      <th className="p-2">ครูผู้สอน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classSchedules
+                      .filter(s => {
+                        // Very simple filter: checks if today is within the start/end date range
+                        // and matches a day of the week
+                        const d = new Date(tableDate);
+                        const start = new Date(s.startDate);
+                        const end = new Date(s.endDate);
+                        const dayOfWeek = getThaiDayOfWeek(d);
+                        return d >= start && d <= end && matchesDayOfWeek(s.dayOfWeek, dayOfWeek);
+                      })
+                      .map(s => (
+                        <tr key={s.id} className="border-b hover:bg-neutral-50">
+                          <td className="p-2 font-mono">{s.subjectCode}</td>
+                          <td className="p-2 font-bold">{s.subjectName}</td>
+                          <td className="p-2">{s.instructorName}</td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* End of content */}
 
             {/* If Student, show class schedule and grades */}
             {isStudent && (
