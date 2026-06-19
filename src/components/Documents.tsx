@@ -10,6 +10,7 @@ import { getAppOriginForQR, APIService, syncWithGoogleSheets, uploadToGoogleDriv
 import { alerts as Swal } from '../lib/alerts';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
+import { THALANG_LOGO_BASE64 } from './ThalangLogoBase64';
 
 function oklchToRgb(oklchStr: string): string {
   try {
@@ -360,8 +361,9 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
   }
 
   try {
+    const isA4FullPortrait = element.classList.contains('full-a4-portrait') || element.innerHTML.includes('TLTC-MO-033') || filename.includes('ขออนุญาตใช้ห้อง');
     const opt = {
-      margin:       orientation === 'portrait' ? [12, 10, 12, 10] : [10, 10, 10, 10],
+      margin:       isA4FullPortrait ? 0 : (orientation === 'portrait' ? [12, 10, 12, 10] : [10, 10, 10, 10]),
       filename:     filename,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { 
@@ -462,7 +464,7 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
 export function ThalangLogo({ className = "w-16 h-16" }: { className?: string }) {
   return (
     <img
-      src="https://cdn.phototourl.com/free/2026-06-17-14c81d8e-cec3-4c62-8da1-5ccce3bab4b5.png"
+      src={THALANG_LOGO_BASE64}
       alt="วิทยาลัยเทคนิคถลาง"
       className={className}
       referrerPolicy="no-referrer"
@@ -692,22 +694,6 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
             <FileDown size={13} />
             <span>ดาวน์โหลดเอกสาร PDF</span>
           </button>
-          <button
-            onClick={handleSaveToDrive}
-            disabled={isWorking}
-            className={`flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-sans text-xs font-bold py-1.5 px-3 rounded-md transition-colors ${isWorking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <Cloud size={13} />
-            <span>บันทึกลง Google Drive</span>
-          </button>
-          <button
-            onClick={handlePrint}
-            disabled={isWorking}
-            className={`flex items-center gap-1 bg-neutral-950 hover:bg-neutral-800 text-white font-sans text-xs font-bold py-1.5 px-3 rounded-md transition-colors ${isWorking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <Printer size={13} />
-            <span>สั่งพิมพ์บัตรประจำตัว</span>
-          </button>
         </div>
       </div>
     </div>
@@ -798,10 +784,21 @@ export function getMaintenanceManagerInfo() {
 
 export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }: RoomRequestDocProps) {
   const managerInfo = getMaintenanceManagerInfo();
+  const [isWorking, setIsWorking] = React.useState(false);
   const isRequester = currentUser && (
     currentUser.id === request.requesterId || 
     `${currentUser.firstName} ${currentUser.lastName}` === request.requesterName
   );
+
+  const handleDownloadPDF = async () => {
+    if (isWorking) return;
+    setIsWorking(true);
+    try {
+      await generateAndOpenPDF('.print-card', `ขออนุญาตใช้ห้อง_${request.requesterName}_${request.id}.pdf`, 'portrait');
+    } finally {
+      setIsWorking(false);
+    }
+  };
 
   const promptRecordUsage = () => {
     Swal.fire({
@@ -984,7 +981,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
 
         <div className="p-8 overflow-y-auto bg-neutral-650 flex-1">
           {/* Printable A4 PDF Paper Mock */}
-          <div className="bg-white p-12 shadow-2xl max-w-[210mm] mx-auto min-h-[297mm] font-sans text-black relative print-card text-[12px] leading-relaxed border border-neutral-300">
+          <div className="bg-white p-10 shadow-2xl max-w-[210mm] mx-auto min-h-[297mm] font-sans text-black relative print-card full-a4-portrait text-[12px] leading-relaxed border border-neutral-300">
             
             {/* Form Header Table modeled exactly like Photo 1 */}
             <table className="w-full border-collapse border border-black text-xs text-black mb-6">
@@ -1012,7 +1009,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
             </table>
 
             {/* Content Details Grid Block mirroring Photo 1 layout with blue ink text & dotted lines */}
-            <div className="space-y-4 my-8 text-black font-sans text-[12px] leading-[2.2]">
+            <div className="space-y-3 my-5 text-black font-sans text-[12px] leading-[2.2]">
               <div className="flex flex-wrap items-baseline gap-1">
                 <span>ข้าพเจ้า</span>
                 <span className="flex-1 min-w-[200px] border-b border-dotted border-black px-2 font-bold text-blue-800 text-center select-none font-serif text-[13px] italic">
@@ -1068,7 +1065,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
             </div>
 
             {/* Checklist Box Area modeled on Photo 1 checkbox layout */}
-            <div className="my-8 text-black border border-neutral-300 p-5 rounded-md relative bg-neutral-50/20">
+            <div className="my-5 text-black border border-neutral-300 p-4 rounded-md relative bg-neutral-50/20">
               <h4 className="font-bold font-sans text-xs mb-4 text-black border-b border-neutral-200 pb-1">
                 ห้องที่มีความประสงค์ขอใช้
               </h4>
@@ -1160,7 +1157,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
             </div>
 
             {/* Requester Signature Block matching Photo 1 positioning */}
-            <div className="my-8 flex justify-end mr-4">
+            <div className="my-5 flex justify-end mr-4">
               <div className="w-[310px] flex flex-col items-center text-center space-y-1.5 text-black font-sans text-xs">
                 <div className="flex items-baseline w-full justify-center gap-1">
                   <span>ลงชื่อ</span>
@@ -1201,7 +1198,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
             </div>
 
             {/* Readiness Opinion Box modeled on Photo 1 bottom region */}
-            <div className="border border-black p-4 space-y-4 my-8 text-black font-sans text-xs bg-neutral-50/20">
+            <div className="border border-black p-4 space-y-3 my-5 text-black font-sans text-xs bg-neutral-50/20">
               <h4 className="font-bold underline">ความคิดเห็นผู้ตรวจสอบความพร้อมของห้อง</h4>
               
               <div className="space-y-3 pl-3">
@@ -1273,24 +1270,49 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
             </div>
 
             {/* Document Footer */}
-            <div className="flex justify-between items-center text-[10px] text-neutral-500 font-sans mt-12 pt-3 border-t border-neutral-300 select-none">
+            <div className="flex justify-between items-center text-[10px] text-neutral-500 font-sans mt-6 pt-2 border-t border-neutral-300 select-none">
               <span>Effective date {formatEffectiveDate(request.maintenanceCertifiedDate)}, Rev.00</span>
               <span className="font-semibold">Page 1 of 1</span>
             </div>
           </div>
         </div>
 
-        {onRecordUsage && isRequester && (
-          <div className="bg-neutral-50 p-4 border-t border-neutral-200 flex justify-end gap-2 flex-wrap no-print">
+        <div className="bg-neutral-50 p-3.5 flex justify-end gap-3 border-t border-neutral-200 no-print flex-wrap">
+          <button
+            disabled={isWorking}
+            onClick={handleDownloadPDF}
+            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
+          >
+            <FileDown size={13} />
+            <span>{isWorking ? 'กำลังเตรียมไฟล์ PDF...' : 'ดาวน์โหลดเอกสาร PDF (Download PDF)'}</span>
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <Printer size={13} />
+            <span>พิมพ์เอกสารนี้ (Print)</span>
+          </button>
+          
+          {onRecordUsage && isRequester && (
             <button
               onClick={promptRecordUsage}
-              className="flex items-center gap-2 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm no-print cursor-pointer"
+              className="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
             >
-              <FileText size={14} />
+              <FileText size={13} />
               <span>บันทึกการใช้ห้อง (รายงานสิ่งที่ต้องการพัฒนา)</span>
             </button>
-          </div>
-        )}
+          )}
+
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <X size={13} />
+            <span>ปิดหน้าต่างนี้ (Close)</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1304,6 +1326,17 @@ interface RoomUsageRecordDocProps {
 
 export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: RoomUsageRecordDocProps) {
   const managerInfo = getMaintenanceManagerInfo();
+  const [isWorking, setIsWorking] = React.useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (isWorking) return;
+    setIsWorking(true);
+    try {
+      await generateAndOpenPDF('.print-landscape', 'สมุดบันทึกการใช้ห้อง_TLTC-MO-034.pdf', 'landscape');
+    } finally {
+      setIsWorking(false);
+    }
+  };
 
   const latestCertifiedDate = React.useMemo(() => {
     const list = roomRequests.filter(r => r.maintenanceApproved === 'Approved' && r.maintenanceCertifiedDate);
@@ -1490,6 +1523,32 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
           </div>
         </div>
 
+        {/* Bottom bar for easy print and close */}
+        <div className="bg-neutral-50 p-3.5 flex justify-end gap-3 border-t border-neutral-200 no-print flex-wrap">
+          <button
+            disabled={isWorking}
+            onClick={handleDownloadPDF}
+            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
+          >
+            <FileDown size={13} />
+            <span>{isWorking ? 'กำลังเตรียมไฟล์ PDF...' : 'ดาวน์โหลดเอกสาร PDF (Download PDF)'}</span>
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <Printer size={13} />
+            <span>พิมพ์บันทึกการใช้ห้อง (Print)</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <X size={13} />
+            <span>ปิดหน้าต่างนี้ (Close)</span>
+          </button>
+        </div>
 
       </div>
     </div>
@@ -1503,6 +1562,17 @@ interface TraceabilityToolsLogDocProps {
 
 export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsLogDocProps) {
   const managerInfo = getMaintenanceManagerInfo();
+  const [isWorking, setIsWorking] = React.useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (isWorking) return;
+    setIsWorking(true);
+    try {
+      await generateAndOpenPDF('.print-landscape-mo001', 'สมุดทะเบียนยืมคืนเครื่องมือช่าง_TLTC-MO-001.pdf', 'landscape');
+    } finally {
+      setIsWorking(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print animate-fade-in">
@@ -1528,7 +1598,7 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
         }
       `}</style>
 
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl overflow-hidden flex flex-col border border-neutral-200">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border border-neutral-200">
         <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print relative z-50">
           <div className="flex items-center gap-2">
             <span className="bg-rose-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">PDF GENERATOR</span>
@@ -1749,6 +1819,32 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
           </div>
         </div>
 
+        {/* Bottom bar for easy print and close */}
+        <div className="bg-neutral-50 p-3.5 flex justify-end gap-3 border-t border-neutral-200 no-print flex-wrap">
+          <button
+            disabled={isWorking}
+            onClick={handleDownloadPDF}
+            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
+          >
+            <FileDown size={13} />
+            <span>{isWorking ? 'กำลังเตรียมไฟล์ PDF...' : 'ดาวน์โหลดเอกสาร PDF (Download PDF)'}</span>
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <Printer size={13} />
+            <span>พิมพ์รายงานชิ้นนี้ (Print)</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+          >
+            <X size={13} />
+            <span>ปิดหน้าต่างนี้ (Close)</span>
+          </button>
+        </div>
 
       </div>
     </div>

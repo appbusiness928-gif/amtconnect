@@ -71,7 +71,7 @@ export interface Equipment {
   code: string; // barcode string
   qty: number;
   location: string;
-  status: 'Ready' | 'Calibrating' | 'Damaged' | 'Borrowed';
+  status: 'Ready' | 'Calibrating' | 'Damaged' | 'Borrowed' | 'NotReady';
   remark: string;
   calibrationDate?: string;
 }

@@ -9,7 +9,7 @@ import SignaturePad from './SignaturePad';
 import { 
   Plus, Calendar, Search, Star, Award, BookOpen, Users, 
   Wrench, Camera, HelpCircle, Eye, Printer, ShieldCheck, RefreshCw,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Edit3, X
 } from 'lucide-react';
 import { alerts as Swal } from '../lib/alerts';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
@@ -19,7 +19,7 @@ import { TraceabilityToolsLogDoc } from './Documents';
 const TIME_OPTIONS = [
   "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
   "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"
+  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"
 ];
 
 interface ExamOfficeStudentPanelProps {
@@ -37,10 +37,11 @@ interface ExamOfficeStudentPanelProps {
   onAddGrade: (grade: ExamGrade) => void;
   onBorrowEquipment: (code: string, qty: number, signature: string) => void;
   onReturnEquipment: (borrowId: string) => void;
-  onSubmitRoomRequest: (req: Omit<RoomRequest, 'id' | 'maintenanceApproved' | 'isRoomUsageRecordCreated'>) => void;
+  onSubmitRoomRequest: (req: Omit<RoomRequest, 'id' | 'maintenanceApproved' | 'isRoomUsageRecordCreated'>) => boolean;
   onViewRequestDoc: (req: RoomRequest) => void;
   onUpdateProfile: (updated: Partial<User>) => void;
   onAddUsageRecord?: (record: Omit<RoomUsageRecord, 'id' | 'maintenanceOfficerStatus'>) => void;
+  onCancelRoomRequest?: (requestId: string) => void;
 }
 
 const DAYS_OF_WEEK_LIST = [
@@ -96,7 +97,8 @@ export default function ExamOfficeStudentPanel({
   onSubmitRoomRequest,
   onViewRequestDoc,
   onUpdateProfile,
-  onAddUsageRecord
+  onAddUsageRecord,
+  onCancelRoomRequest
 }: ExamOfficeStudentPanelProps) {
   const isStudent = currentUser.role === 'นักศึกษา';
   const isInstructor = currentUser.role === 'Instructor';
@@ -349,12 +351,23 @@ export default function ExamOfficeStudentPanel({
   }, [dbBatches, schBatch, exBatch, gradeBatch, rosterBatch, scheduleBatch]);
 
   // Profile Edit states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);
   const [editLastName, setEditLastName] = useState(currentUser.lastName);
   const [editEmail, setEditEmail] = useState(currentUser.email);
   const [editPassword, setEditPassword] = useState(currentUser.password || '');
   const [editPhoto, setEditPhoto] = useState(currentUser.photoUrl);
   const [editSig, setEditSig] = useState(currentUser.signature);
+
+  const handleCancelEditProfile = () => {
+    setEditFirstName(currentUser.firstName);
+    setEditLastName(currentUser.lastName);
+    setEditEmail(currentUser.email);
+    setEditPassword(currentUser.password || '');
+    setEditPhoto(currentUser.photoUrl);
+    setEditSig(currentUser.signature);
+    setIsEditingProfile(false);
+  };
 
   const handleUpdateProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -370,7 +383,79 @@ export default function ExamOfficeStudentPanel({
       photoUrl: editPhoto,
       signature: editSig
     });
+    setIsEditingProfile(false);
     Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'แก้ไขข้อมูลของฉันเรียบร้อยแล้ว', confirmButtonColor: '#171717' });
+  };
+
+  const checkRoomBusy = (roomName: string): boolean => {
+    if (!requestDate || !startTime || !endTime) return false;
+    if (startTime >= endTime) return false;
+
+    const normalizeDateStr = (dateStr: string): string => {
+      if (!dateStr) return '';
+      const trimmed = dateStr.trim();
+      let year = NaN;
+      let month = NaN;
+      let day = NaN;
+
+      if (trimmed.includes('-')) {
+        const parts = trimmed.split('-');
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+          } else {
+            year = parseInt(parts[2], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[0], 10);
+          }
+        }
+      } else if (trimmed.includes('/')) {
+        const parts = trimmed.split('/');
+        if (parts.length === 3) {
+          if (parts[2].length === 4) {
+            year = parseInt(parts[2], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[0], 10);
+          } else if (parts[0].length === 4) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+          }
+        }
+      }
+
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        if (year > 2400) year -= 543;
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+      return trimmed;
+    };
+
+    const parseTimeRangeStr = (timeRangeStr: string) => {
+      const parts = timeRangeStr.split('-');
+      if (parts.length === 2) {
+        return {
+          startTime: parts[0].trim(),
+          endTime: parts[1].trim(),
+        };
+      }
+      return { startTime: '', endTime: '' };
+    };
+
+    const targetNormDate = normalizeDateStr(requestDate);
+
+    return roomRequests.some(existing => {
+      if (existing.maintenanceApproved === 'Rejected') return false;
+      if (existing.room.trim().toLowerCase() !== roomName.trim().toLowerCase()) return false;
+      if (normalizeDateStr(existing.date) !== targetNormDate) return false;
+
+      const existTimes = parseTimeRangeStr(existing.timeRange);
+      if (!existTimes.startTime || !existTimes.endTime) return false;
+
+      return existTimes.startTime < endTime && startTime < existTimes.endTime;
+    });
   };
 
   const handleRoomSubmit = (e: React.FormEvent) => {
@@ -383,8 +468,30 @@ export default function ExamOfficeStudentPanel({
       Swal.fire({ icon: 'error', title: 'ต้องการลายเซ็น', text: 'กรุณาเซ็นชื่อลายมือบนบอร์ด', confirmButtonColor: '#171717' });
       return;
     }
+
+    // Validate that startTime < endTime before submitting
+    if (startTime >= endTime) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ช่วงเวลาไม่ถูกต้อง',
+        text: 'เวลาเริ่มต้นต้องอยู่ก่อนเวลาสิ้นสุด',
+        confirmButtonColor: '#171717'
+      });
+      return;
+    }
+
     const finalRoom = selectedRoom === 'Other' ? otherRoomText : selectedRoom;
-    onSubmitRoomRequest({
+    if (checkRoomBusy(finalRoom)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ห้องไม่ว่าง',
+        text: 'ห้องนี้ถูกจองใช้ในช่วงเวลาที่ท่านเลือกแล้ว กรุณาเลือกเวลาอื่นหรือเปลี่ยนห้อง',
+        confirmButtonColor: '#171717'
+      });
+      return;
+    }
+
+    const success = onSubmitRoomRequest({
       date: requestDate,
       timeRange: `${startTime} - ${endTime}`,
       room: finalRoom,
@@ -396,11 +503,14 @@ export default function ExamOfficeStudentPanel({
       purpose,
       signature: requestSignature,
     });
-    setPurpose('');
-    setDepartment('');
-    setPhone('');
-    setRequestSignature('');
-    Swal.fire({ icon: 'success', title: 'จองเรียบร้อย', text: 'ส่งใบคำขอกุญแจห้องแล้วรอฝ่ายข่างอนุมัติ', confirmButtonColor: '#171717' });
+
+    if (success) {
+      setPurpose('');
+      setDepartment('');
+      setPhone('');
+      setRequestSignature('');
+      Swal.fire({ icon: 'success', title: 'จองเรียบร้อย', text: 'ส่งใบคำขอกุญแจห้องแล้วรอฝ่ายข่างอนุมัติ', confirmButtonColor: '#171717' });
+    }
   };
 
   const handleUsageRecordSubmit = (e: React.FormEvent) => {
@@ -548,6 +658,15 @@ export default function ExamOfficeStudentPanel({
       Swal.fire({ icon: 'error', title: 'ไม่พบอุปกรณ์', text: 'ไม่พบเครื่องมือชิ้นนี้ในรายการ', confirmButtonColor: '#171717' });
       return;
     }
+    if (match.qty === 0 || match.status === 'NotReady' || match.status === 'Damaged' || match.status === 'Calibrating') {
+      Swal.fire({
+        icon: 'error',
+        title: 'เครื่องมือไม่พร้อมใช้งาน',
+        text: 'อุปกรณ์ชิ้นนี้ไม่อยู่ในสถานะพร้อมให้ยืมบริการขณะนี้ (เนื่องจากชำรุด สอบเทียบ หรือหมดคลัง)',
+        confirmButtonColor: '#171717'
+      });
+      return;
+    }
     const totalBorrowed = borrowRecords
       .filter(r => r.equipmentCode === match.code && r.status !== 'Returned')
       .reduce((sum, r) => sum + r.qty, 0);
@@ -652,7 +771,26 @@ export default function ExamOfficeStudentPanel({
 
             {/* EDIT PROFILE SECTION */}
             <form onSubmit={handleUpdateProfileSubmit} className="space-y-4 bg-stone-50 border border-neutral-300 p-4 rounded">
-              <h4 className="font-bold text-neutral-900 text-xs border-b pb-1">แก้ไขประวัติข้อมูลและรูปภาพลายเซ็น</h4>
+              <div className="flex items-center justify-between border-b pb-1">
+                <h4 className="font-bold text-neutral-900 text-xs">แก้ไขประวัติข้อมูลและรูปภาพลายเซ็น</h4>
+                {!isEditingProfile && (
+                  <span className="text-[10px] bg-amber-50 text-amber-800 font-bold border border-amber-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+                    โหมดแสดงข้อมูล (Read-Only)
+                  </span>
+                )}
+              </div>
+
+              {!isEditingProfile && (
+                <div className="bg-amber-50 border-l-4 border-amber-500 p-3.5 my-2.5 rounded-r shadow-xs animate-fade-in select-none">
+                  <div className="flex gap-2">
+                    <span className="text-amber-600 font-bold text-xs">⚠️ แจ้งเตือน:</span>
+                    <div className="text-[10.5px] text-amber-900 leading-normal font-sans">
+                      <p className="font-extrabold text-amber-950">ข้อมูลถูกล็อกไว้เป็นโหมดแสดงผล (Read-Only Mode) เพื่อความปลอดภัย</p>
+                      <p className="mt-1 font-semibold text-neutral-700">กรุณากดปุ่ม <strong className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 font-bold">"แก้ไขข้อมูลส่วนตัว"</strong> สีเขียวด้านล่างสุดของฟอร์มก่อน จึงจะสามารถแก้ลายเซ็น บันทึกรหัสผ่านใหม่ หรืออัปรูปภาพได้</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="flex flex-col sm:flex-row items-center gap-6 p-2 rounded mb-1">
                 <div className="w-16 h-20 rounded border border-neutral-400 overflow-hidden shrink-0">
@@ -660,56 +798,123 @@ export default function ExamOfficeStudentPanel({
                 </div>
                 <div className="space-y-1 w-full">
                   <span className="font-bold text-[10px] text-neutral-700">อัปเดตไฟล์รูปถ่ายประจำตัวผู้ใช้:</span>
-                  <input
-                    id="seoPhotoUploadInput"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) {
-                        const r = new FileReader();
-                        r.onloadend = () => setEditPhoto(r.result as string);
-                        r.readAsDataURL(f);
-                      }
-                    }}
-                    className="block text-[10px] text-neutral-400 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[9px] file:font-semibold file:bg-neutral-950 file:text-white hover:file:bg-neutral-850 cursor-pointer"
-                  />
+                  {isEditingProfile ? (
+                    <input
+                      id="seoPhotoUploadInput"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) {
+                          const r = new FileReader();
+                          r.onloadend = () => setEditPhoto(r.result as string);
+                          r.readAsDataURL(f);
+                        }
+                      }}
+                      className="block text-[10px] text-neutral-400 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[9px] file:font-semibold file:bg-neutral-950 file:text-white hover:file:bg-neutral-850 cursor-pointer"
+                    />
+                  ) : (
+                    <p className="text-[10px] text-neutral-500 italic">* กดปุ่มแก้ไขข้อมูลเพื่อเลือกไฟล์รูปภาพใหม่</p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">ชื่อจริง *</label>
-                  <input type="text" required value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} className="w-full border border-neutral-300 px-2 py-1 rounded focus:outline-none text-xs bg-white" />
+                  <input 
+                    type="text" 
+                    required 
+                    disabled={!isEditingProfile} 
+                    value={editFirstName} 
+                    onChange={(e) => setEditFirstName(e.target.value)} 
+                    className={`w-full border px-2 py-1 rounded focus:outline-none text-xs transition-colors ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
+                  />
                 </div>
                 <div>
                   <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">นามสกุล *</label>
-                  <input type="text" required value={editLastName} onChange={(e) => setEditLastName(e.target.value)} className="w-full border border-neutral-300 px-2 py-1 rounded focus:outline-none text-xs bg-white" />
+                  <input 
+                    type="text" 
+                    required 
+                    disabled={!isEditingProfile} 
+                    value={editLastName} 
+                    onChange={(e) => setEditLastName(e.target.value)} 
+                    className={`w-full border px-2 py-1 rounded focus:outline-none text-xs transition-colors ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">อีเมลผู้ใช้งาน *</label>
-                  <input type="email" required value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full border border-neutral-300 px-2 py-1 rounded focus:outline-none text-xs bg-white font-mono" />
+                  <input 
+                    type="email" 
+                    required 
+                    disabled={!isEditingProfile} 
+                    value={editEmail} 
+                    onChange={(e) => setEditEmail(e.target.value)} 
+                    className={`w-full border px-2 py-1 rounded focus:outline-none text-xs font-mono transition-colors ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
+                  />
                 </div>
                 <div>
                   <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">เปลี่ยนรหัสผ่านเพื่อเข้าใช้งานรอบถัดไป *</label>
-                  <input type="password" required value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="w-full border border-neutral-300 px-2 py-1 rounded focus:outline-none text-xs bg-white font-mono" />
+                  <input 
+                    type="password" 
+                    required 
+                    disabled={!isEditingProfile} 
+                    value={editPassword} 
+                    onChange={(e) => setEditPassword(e.target.value)} 
+                    className={`w-full border px-2 py-1 rounded focus:outline-none text-xs font-mono transition-colors ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
+                  />
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="block text-[9px] font-bold text-neutral-800">ปรับแก้ลายเซ็นมือถือรับรองรายงาน *</label>
-                <div className="w-full max-w-sm">
-                  <SignaturePad onSave={(data) => setEditSig(data)} defaultValue={editSig} />
-                </div>
+                {!isEditingProfile ? (
+                  <div className="w-full max-w-sm p-4 bg-stone-150 border border-neutral-300 rounded flex items-center justify-center min-h-[96px] select-none">
+                    {editSig ? (
+                      <img src={editSig} alt="Signature Preview" className="max-h-16 object-contain" referrerPolicy="no-referrer" />
+                    ) : (
+                      <span className="text-[11px] text-neutral-450 italic">ยังไม่มีลายเซ็นลงทะเบียน</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full max-w-sm">
+                    <SignaturePad onSave={(data) => setEditSig(data)} defaultValue={editSig} />
+                  </div>
+                )}
               </div>
 
-              <div className="pt-2 border-t flex justify-end">
-                <button id="saveSeoProfileBtn" type="submit" className="px-4 py-1.5 bg-[#0F172A] hover:bg-neutral-800 text-white rounded font-bold cursor-pointer text-[10px] shadow-sm">
-                  บันทึกการแก้ไขข้อมูลส่วนตัวของฉัน
-                </button>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                {!isEditingProfile ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(true)}
+                    className="flex items-center gap-1 bg-emerald-650 hover:bg-emerald-700 text-white px-4 py-1.5 rounded font-bold cursor-pointer text-[10px] shadow-sm transition-colors"
+                  >
+                    <Edit3 size={12} />
+                    <span>แก้ไขข้อมูลส่วนตัว</span>
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCancelEditProfile}
+                      className="flex items-center gap-1 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 px-3 py-1.5 rounded font-bold cursor-pointer text-[10px] transition-colors"
+                    >
+                      <X size={12} />
+                      <span>ยกเลิก (Cancel)</span>
+                    </button>
+                    <button 
+                      id="saveSeoProfileBtn" 
+                      type="submit" 
+                      className="flex items-center gap-1 bg-[#0F172A] hover:bg-neutral-800 text-white px-4 py-1.5 rounded font-bold cursor-pointer text-[10px] shadow-sm transition-colors"
+                    >
+                      <span>บันทึกการแก้ไขข้อมูลส่วนตัวของฉัน</span>
+                    </button>
+                  </>
+                )}
               </div>
             </form>
 
@@ -1442,27 +1647,6 @@ export default function ExamOfficeStudentPanel({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-[10px] font-bold text-neutral-700 mb-1">พื้นที่ปฏิบัติงานที่ต้องการขอจอง *</label>
-                        <select
-                          id="reqRoomSelect"
-                          value={selectedRoom}
-                          onChange={(e) => setSelectedRoom(e.target.value)}
-                          className="w-full border border-neutral-300 px-2 py-2 rounded bg-white text-xs font-semibold"
-                        >
-                          <option value="Practical Area in Hangar">Practical Area in Hangar</option>
-                          <option value="Meeting Room">Meeting Room</option>
-                          <option value="Theoretical Classroom">Theoretical Classroom</option>
-                          <option value="Library Room">Library Room</option>
-                          <option value="Workshop 1">Workshop 1</option>
-                          <option value="Workshop 2">Workshop 2</option>
-                          <option value="Fiberglass Workshop">Fiberglass Workshop</option>
-                          <option value="Examination Room">Examination Room</option>
-                          <option value="Aerodynamic Room">Aerodynamic Room</option>
-                          <option value="Electrical Room">Electrical Room</option>
-                        </select>
-                      </div>
-
-                      <div>
                         <label className="block text-[10px] font-bold text-neutral-700 mb-1">วันที่ต้องการเข้าใช้งานห้อง *</label>
                         <input
                           id="reqDateInput"
@@ -1470,20 +1654,20 @@ export default function ExamOfficeStudentPanel({
                           required
                           value={requestDate}
                           onChange={(e) => setRequestDate(e.target.value)}
-                          className="w-full border border-neutral-300 px-3 py-1.5 rounded focus:outline-none font-mono text-xs"
+                          className="w-full border border-neutral-300 px-3 py-1.5 rounded focus:outline-none font-mono text-xs bg-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาการจอง *</label>
+                        <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาการจอง (ชั่วโมง) *</label>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-[8px] font-bold text-neutral-500 mb-0.5">ตั้งแต่เวลา</label>
+                            <label className="block text-[8px] font-bold text-neutral-450 mb-0.5">ตั้งแต่เวลา</label>
                             <select
                               id="reqStartTimeSelect"
                               value={startTime}
                               onChange={(e) => setStartTime(e.target.value)}
-                              className="w-full border border-neutral-300 px-2 py-1.5 rounded bg-white text-xs font-medium"
+                              className="w-full border border-neutral-300 px-2 py-1.5 rounded bg-white text-xs font-semibold"
                             >
                               {TIME_OPTIONS.map(time => (
                                 <option key={time} value={time}>{time}</option>
@@ -1491,12 +1675,12 @@ export default function ExamOfficeStudentPanel({
                             </select>
                           </div>
                           <div>
-                            <label className="block text-[8px] font-bold text-neutral-500 mb-0.5">ถึงเวลา</label>
+                            <label className="block text-[8px] font-bold text-neutral-450 mb-0.5">ถึงเวลา</label>
                             <select
                               id="reqEndTimeSelect"
                               value={endTime}
                               onChange={(e) => setEndTime(e.target.value)}
-                              className="w-full border border-neutral-300 px-2 py-1.5 rounded bg-white text-xs font-medium"
+                              className="w-full border border-neutral-300 px-2 py-1.5 rounded bg-white text-xs font-semibold"
                             >
                               {TIME_OPTIONS.map(time => (
                                 <option key={time} value={time}>{time}</option>
@@ -1505,7 +1689,67 @@ export default function ExamOfficeStudentPanel({
                           </div>
                         </div>
                       </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-neutral-700 mb-1">พื้นที่ปฏิบัติงานที่ต้องการขอจอง *</label>
+                        <select
+                          id="reqRoomSelect"
+                          value={selectedRoom}
+                          onChange={(e) => setSelectedRoom(e.target.value)}
+                          className={`w-full border px-2 py-1.5 rounded focus:outline-none bg-white text-xs font-semibold ${
+                            selectedRoom !== 'Other' && checkRoomBusy(selectedRoom) 
+                              ? 'border-rose-450 text-rose-600 bg-rose-50' 
+                              : 'border-neutral-300'
+                          }`}
+                        >
+                          {[
+                            "Practical Area in Hangar",
+                            "Meeting Room",
+                            "Theoretical Classroom",
+                            "Library Room",
+                            "Workshop 1",
+                            "Workshop 2",
+                            "Fiberglass Workshop",
+                            "Examination Room",
+                            "Aerodynamic Room",
+                            "Electrical Room"
+                          ].map(room => {
+                            const isBusy = checkRoomBusy(room);
+                            const isDateTimeFilled = !!(requestDate && startTime && endTime && (startTime < endTime));
+                            const statusSuffix = isDateTimeFilled ? (isBusy ? " (ไม่ว่าง)" : " (ว่าง)") : " (ว่าง)";
+                            return (
+                              <option key={room} value={room} disabled={isBusy}>
+                                {room}{statusSuffix}
+                              </option>
+                            );
+                          })}
+                          <option value="Other">อื่นๆ (ระบุห้องด้านล่าง)</option>
+                        </select>
+                        {selectedRoom !== 'Other' && checkRoomBusy(selectedRoom) && (
+                          <p className="text-[9px] text-rose-600 font-semibold mt-1">⚠️ ห้องนี้ถูกจองใช้ในช่วงเวลาดังกล่าวแล้ว</p>
+                        )}
+                      </div>
                     </div>
+
+                    {selectedRoom === 'Other' && (
+                      <div className="mt-4">
+                        <label className="block text-[10px] font-bold text-neutral-700 mb-1">กรอกข้อมูลระบุชื่อห้องอื่น *</label>
+                        <input
+                          id="reqOtherRoomInput"
+                          type="text"
+                          required
+                          placeholder="เช่น ห้องล้างเครื่องยนต์"
+                          value={otherRoomText}
+                          onChange={(e) => setOtherRoomText(e.target.value)}
+                          className={`w-full border px-3 py-2 rounded focus:outline-none ${
+                            checkRoomBusy(otherRoomText) ? 'border-rose-450 text-rose-600 bg-rose-50' : 'border-neutral-300'
+                          }`}
+                        />
+                        {checkRoomBusy(otherRoomText) && (
+                          <p className="text-[9px] text-rose-600 font-semibold mt-1">⚠️ ห้องระบุดังกล่าวไม่ว่างในช่วงเวลาที่เลือก</p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-[10px] font-bold text-neutral-700 mb-1">จุดประสงค์กิจกรรมคราดการเข้าใช้งานอย่างชัดถ้อยชัดใบ *</label>
@@ -1652,17 +1896,26 @@ export default function ExamOfficeStudentPanel({
                   <div className="w-full">
                     <span className="block text-[9.5px] text-neutral-300 mb-2 font-semibold">หรือคุณสามารถคลิกเลือกปุ่มด้านล่างนี้ เพื่อ "สลับสแกนอุปกรณ์" จำลองได้ทันที:</span>
                     <div className="flex flex-wrap justify-center gap-1 text-[10px]">
-                      {equipments.map(tool => (
-                        <button
-                          key={tool.code}
-                          id={`simulateToolScanBtn_${tool.code}`}
-                          type="button"
-                          onClick={() => handleSimulateScan(tool.code)}
-                          className="bg-white/10 hover:bg-emerald-600 hover:text-white border border-white/20 px-2.5 py-1 rounded cursor-pointer font-bold font-mono transition-transform duration-100 hover:scale-105"
-                        >
-                          สแกน {tool.code}
-                        </button>
-                      ))}
+                      {equipments.map(tool => {
+                        const isUnavailable = tool.qty === 0 || tool.status === 'NotReady' || tool.status === 'Damaged' || tool.status === 'Calibrating';
+                        return (
+                          <button
+                            key={tool.code}
+                            id={`simulateToolScanBtn_${tool.code}`}
+                            type="button"
+                            disabled={isUnavailable}
+                            onClick={() => handleSimulateScan(tool.code)}
+                            className={`px-2.5 py-1 rounded cursor-pointer font-bold font-mono transition-transform duration-100 hover:scale-105 border ${
+                              isUnavailable
+                                ? 'bg-rose-950/20 text-rose-300/40 border-rose-900/15 cursor-not-allowed line-through'
+                                : 'bg-white/10 hover:bg-emerald-600 hover:text-white border-white/20'
+                            }`}
+                            title={isUnavailable ? 'ไม่พร้อมใช้งาน' : tool.toolName}
+                          >
+                            สแกน {tool.code} {isUnavailable ? '(ไม่ว่าง)' : ''}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -1963,14 +2216,25 @@ export default function ExamOfficeStudentPanel({
                                 )}
                               </td>
                               <td className="py-3 px-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => onViewRequestDoc(req)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] rounded transition-all cursor-pointer active:scale-95 shadow-3xs"
-                                >
-                                  <Printer size={10} />
-                                  <span>แสดงเอกสาร PDF</span>
-                                </button>
+                                <div className="flex justify-end gap-1.5 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => onViewRequestDoc(req)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] rounded transition-all cursor-pointer active:scale-95 shadow-3xs"
+                                  >
+                                    <Printer size={10} />
+                                    <span>แสดงเอกสาร PDF</span>
+                                  </button>
+                                  {onCancelRoomRequest && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onCancelRoomRequest(req.id)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] rounded transition-all cursor-pointer active:scale-95 shadow-3xs"
+                                    >
+                                      <span>ยกเลิก</span>
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );

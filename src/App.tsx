@@ -90,6 +90,11 @@ export default function App() {
   // App navigation state: 'home' | 'dashboard' | 'register'
   const [currentScreen, setCurrentScreen] = useState<'home' | 'dashboard' | 'register'>('home');
 
+  // Floating printable dialog overlays state
+  const [activeCardUser, setActiveCardUser] = useState<User | null>(null);
+  const [activeRequestDoc, setActiveRequestDoc] = useState<RoomRequest | null>(null);
+  const [showUsageRecordDoc, setShowUsageRecordDoc] = useState(false);
+
   // Input states for login screen
   const [loginId, setLoginId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -101,26 +106,38 @@ export default function App() {
   const [loginCameraError, setLoginCameraError] = useState<string | null>(null);
   const [scannedUser, setScannedUser] = useState<User | null>(null);
 
-  // Parse QR link verification from search query parameters on app load
+  // Parse QR link verification from search query parameters or direct URL pathname segment on app load
   useEffect(() => {
     if (isInitialLoading) return;
     const params = new URLSearchParams(window.location.search);
-    const idParam = params.get('id') || params.get('verifyId') || params.get('data');
+    let idParam = params.get('id') || params.get('verifyId') || params.get('data');
+
+    // Extrapolate the ID from the pathname if no valid query parameter is passed
+    if (!idParam) {
+      const pathSegment = window.location.pathname.replace(/^\/|\/$/g, '').trim();
+      const reservedPaths = ['home', 'register', 'dashboard', 'index.html'];
+      if (pathSegment && !reservedPaths.includes(pathSegment.toLowerCase())) {
+        idParam = pathSegment;
+      }
+    }
+
     if (idParam) {
       const cleanId = idParam.trim().replace(/^['"]|['"]$/g, '').trim();
-      const found = db.users.find(u => {
+      
+      // A. Check if the ID belongs to a registered User
+      const foundUser = db.users.find(u => {
         const uIdClean = String(u.id || '').trim().toLowerCase();
         const scannedIdClean = cleanId.toLowerCase();
         return uIdClean === scannedIdClean || uIdClean === scannedIdClean.replace(/\D/g, '') || scannedIdClean === uIdClean.replace(/\D/g, '');
       });
 
-      if (found) {
+      if (foundUser) {
         // Safe clean url to keep URL tidy as a real-world system
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
 
         // Strict security status checks
-        if (found.status === 'Pending') {
+        if (foundUser.status === 'Pending') {
           Swal.fire({
             icon: 'warning',
             title: 'บัญชีอยู่ระหว่างรออนุมัติ',
@@ -129,7 +146,7 @@ export default function App() {
           });
           return;
         }
-        if (found.status === 'พ้นสภาพ') {
+        if (foundUser.status === 'พ้นสภาพ') {
           Swal.fire({
             icon: 'error',
             title: 'บัญชีผู้ใช้นี้พ้นสภาพแล้ว',
@@ -138,7 +155,7 @@ export default function App() {
           });
           return;
         }
-        if (found.status === 'พักการเรียน') {
+        if (foundUser.status === 'พักการเรียน') {
           Swal.fire({
             icon: 'error',
             title: 'บัญชีถูกระงับชั่วคราว',
@@ -147,7 +164,7 @@ export default function App() {
           });
           return;
         }
-        if (found.status === 'จบการศึกษา') {
+        if (foundUser.status === 'จบการศึกษา') {
           Swal.fire({
             icon: 'error',
             title: 'บัญชีพ้นฐานพอร์ทัลหลัก',
@@ -158,8 +175,11 @@ export default function App() {
         }
 
         // Automatic secure login redirection
-        setCurrentUser(found);
+        setCurrentUser(foundUser);
         setCurrentScreen('dashboard');
+
+        // Automatically trigger complete document Student/Staff ID Card popup overlay on top!
+        setActiveCardUser(foundUser);
 
         let statusBg = 'bg-emerald-50 text-emerald-800 border-emerald-300 font-extrabold';
         let statusText = 'อนุมัติเรียบร้อย (Active)';
@@ -168,17 +188,17 @@ export default function App() {
           title: '📌 เข้าสู่ระบบสำเร็จ (TLTC Verified)',
           html: `
             <div class="flex flex-col items-center text-center space-y-4 font-sans select-none my-2 p-1">
-              ${found.photoUrl ? `
-                <img src="${found.photoUrl}" alt="Photo" class="w-24 h-28 object-cover rounded-lg border-2 border-slate-900 shadow-md" referrerPolicy="no-referrer" />
+              ${foundUser.photoUrl ? `
+                <img src="${foundUser.photoUrl}" alt="Photo" class="w-24 h-28 object-cover rounded-lg border-2 border-slate-900 shadow-md" referrerPolicy="no-referrer" />
               ` : `
                 <div class="w-24 h-28 bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 font-extrabold text-3xl border border-slate-300">
-                  ${found.firstName.charAt(0)}
+                  ${foundUser.firstName.charAt(0)}
                 </div>
               `}
               <div class="space-y-1">
-                <h4 class="font-bold text-base text-slate-950">${found.firstName} ${found.lastName}</h4>
-                <p class="text-xs text-slate-500 font-mono">ID: ${found.id}</p>
-                <p class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-full border border-slate-250 inline-block mt-1">${found.role}</p>
+                <h4 class="font-bold text-base text-slate-950">${foundUser.firstName} ${foundUser.lastName}</h4>
+                <p class="text-xs text-slate-500 font-mono">ID: ${foundUser.id}</p>
+                <p class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-full border border-slate-250 inline-block mt-1">${foundUser.role}</p>
               </div>
 
               <div class="w-full border-t border-neutral-200 my-1 pt-3.5 space-y-2 text-left">
@@ -186,15 +206,15 @@ export default function App() {
                   <span class="text-neutral-500">สถานภาพความมั่นคง:</span>
                   <span class="px-2 py-0.5 rounded border text-[11px] ${statusBg}">${statusText}</span>
                 </div>
-                ${found.batch ? `
+                ${foundUser.batch ? `
                   <div class="flex items-center justify-between text-xs">
                     <span class="text-neutral-500">รุ่น/ห้องเรียน:</span>
-                    <span class="font-mono text-neutral-800 font-bold">Class ${found.batch}</span>
+                    <span class="font-mono text-neutral-800 font-bold">Class ${foundUser.batch}</span>
                   </div>
                 ` : ''}
                 <div class="flex items-center justify-between text-xs">
                   <span class="text-neutral-500 font-sans">ลงทะเบียน ณ วันที่:</span>
-                  <span class="font-mono text-neutral-800">${found.createdAt}</span>
+                  <span class="font-mono text-neutral-800">${foundUser.createdAt}</span>
                 </div>
               </div>
 
@@ -206,16 +226,41 @@ export default function App() {
           confirmButtonText: 'เข้าชมพอร์ทัลระบบของฉัน',
           confirmButtonColor: '#0F172A'
         });
-      } else {
+        return;
+      }
+
+      // B. Check if the ID belongs to a Room Request
+      const foundRequest = db.roomRequests.find(r => {
+        const rIdClean = String(r.id || '').trim().toLowerCase();
+        const scannedIdClean = cleanId.toLowerCase();
+        return rIdClean === scannedIdClean;
+      });
+
+      if (foundRequest) {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
-        Swal.fire({
-          icon: 'error',
-          title: 'ไม่พบคิวอาร์รหัสสิทธิ์นี้',
-          text: `รหัสที่ระบุไม่ปรากฏในระบบ: ${cleanId}`,
-          confirmButtonColor: '#0F172A'
-        });
+
+        // Open Room Request document directly!
+        setActiveRequestDoc(foundRequest);
+
+        // Find associated user to set as current logged-in context if possible
+        const associatedUser = db.users.find(u => u.id === foundRequest.requesterId);
+        if (associatedUser) {
+          setCurrentUser(associatedUser);
+          setCurrentScreen('dashboard');
+        }
+        return;
       }
+
+      // C. Otherwise, clean parameters and raise an errors alert
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      Swal.fire({
+        icon: 'error',
+        title: 'ไม่พบคิวอาร์หรือรหัสคีย์สิทธิ์นี้',
+        text: `ข้อมูลรหัสประจำสิทธิ์หรือใบขอใช้อาคารไม่ถูกต้อง: ${cleanId}`,
+        confirmButtonColor: '#0F172A'
+      });
     }
   }, [db, isInitialLoading]);
 
@@ -478,10 +523,7 @@ export default function App() {
     }
   };
 
-  // Floating printable dialog overlays state
-  const [activeCardUser, setActiveCardUser] = useState<User | null>(null);
-  const [activeRequestDoc, setActiveRequestDoc] = useState<RoomRequest | null>(null);
-  const [showUsageRecordDoc, setShowUsageRecordDoc] = useState(false);
+  // Overlays state values synced early
 
   // Sync state polling
   const [syncStatus, setSyncStatus] = useState(APIService.getLastSyncStatus());
@@ -743,7 +785,121 @@ export default function App() {
     updateDb({ ...db, users: nextUsers });
   };
 
-  const handleSubmitRoomRequest = (newRequest: Omit<RoomRequest, 'id' | 'maintenanceApproved' | 'isRoomUsageRecordCreated'>) => {
+  const handleSubmitRoomRequest = (newRequest: Omit<RoomRequest, 'id' | 'maintenanceApproved' | 'isRoomUsageRecordCreated'>): boolean => {
+    // 1. Validate date
+    if (!newRequest.date) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ข้อมูลไม่ถูกต้อง',
+        text: 'กรุณาระบุวันที่ต้องการจองใช้ห้อง',
+        confirmButtonColor: '#171717'
+      });
+      return false;
+    }
+
+    // Helper functions for validation
+    const normalizeDate = (dateStr: string): string => {
+      if (!dateStr) return '';
+      const trimmed = dateStr.trim();
+      let year = NaN;
+      let month = NaN;
+      let day = NaN;
+
+      if (trimmed.includes('-')) {
+        const parts = trimmed.split('-');
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+          } else {
+            year = parseInt(parts[2], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[0], 10);
+          }
+        }
+      } else if (trimmed.includes('/')) {
+        const parts = trimmed.split('/');
+        if (parts.length === 3) {
+          if (parts[2].length === 4) {
+            year = parseInt(parts[2], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[0], 10);
+          } else if (parts[0].length === 4) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+          }
+        }
+      }
+
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        // Correct Thai Buddhist Era (B.E.) years to C.E. if necessary
+        if (year > 2400) {
+          year -= 543;
+        }
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+      return trimmed;
+    };
+
+    const parseTimeRange = (timeRangeStr: string) => {
+      const parts = timeRangeStr.split('-');
+      if (parts.length === 2) {
+        return {
+          startTime: parts[0].trim(),
+          endTime: parts[1].trim(),
+        };
+      }
+      return { startTime: '', endTime: '' };
+    };
+
+    // 2. Parse and validate requested times
+    const newTimes = parseTimeRange(newRequest.timeRange);
+    if (!newTimes.startTime || !newTimes.endTime) {
+      Swal.fire({
+        icon: 'error',
+        title: 'รูปแบบเวลาไม่ถูกต้อง',
+        text: 'การระบุช่วงเวลาการจองไม่ครบคู่สมบูรณ์',
+        confirmButtonColor: '#171717'
+      });
+      return false;
+    }
+
+    if (newTimes.startTime >= newTimes.endTime) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ช่วงเวลาไม่ถูกต้อง',
+        text: 'เวลาเริ่มต้นต้องเร็วกว่าเวลาสิ้นสุด',
+        confirmButtonColor: '#171717'
+      });
+      return false;
+    }
+
+    // 3. Collision check: Cannot book same room, same date, overlapping time if not Rejected
+    const currentNormDate = normalizeDate(newRequest.date);
+    const hasOverlap = db.roomRequests.some(existing => {
+      if (existing.maintenanceApproved === 'Rejected') return false;
+      if (existing.room.trim().toLowerCase() !== newRequest.room.trim().toLowerCase()) return false;
+      if (normalizeDate(existing.date) !== currentNormDate) return false;
+
+      const existTimes = parseTimeRange(existing.timeRange);
+      if (!existTimes.startTime || !existTimes.endTime) return false;
+
+      // Check range overlap: S1 < E2 and S2 < E1
+      return existTimes.startTime < newTimes.endTime && newTimes.startTime < existTimes.endTime;
+    });
+
+    if (hasOverlap) {
+      Swal.fire({
+        icon: 'error',
+        title: 'การจองซ้อนทับกัน',
+        text: `ห้อง "${newRequest.room}" ถูกจองในช่วงเวลาดังกล่าวแล้วในวันที่ระบุ กรุณาปรับเปลี่ยนเวลาหรือห้องปฏิบัติการใหม่`,
+        confirmButtonColor: '#171717'
+      });
+      return false;
+    }
+
     const freshRequest: RoomRequest = {
       ...newRequest,
       id: `REQ-${Date.now()}`,
@@ -752,6 +908,26 @@ export default function App() {
     };
     const nextReqs = [...db.roomRequests, freshRequest];
     updateDb({ ...db, roomRequests: nextReqs });
+    return true;
+  };
+
+  const handleCancelRoomRequest = (requestId: string) => {
+    Swal.fire({
+      title: 'ต้องการยกเลิกคำขอใช้ห้องปฏิบัติการนี้?',
+      text: 'คุณต้องการยกเลิกคำขอใช้ห้องแบบฟอร์มนี้ใช่หรือไม่?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#525252',
+      confirmButtonText: 'ใช่, ดำเนินการยกเลิก',
+      cancelButtonText: 'ย้อนกลับ'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const nextReqs = db.roomRequests.filter(r => r.id !== requestId);
+        updateDb({ ...db, roomRequests: nextReqs });
+        Swal.fire('ยกเลิกแล้ว!', 'ทำการยกเลิกและนำการขอจองห้องดังกล่าวออกจากระบบแล้ว', 'success');
+      }
+    });
   };
 
   const handleUpdateStudentStatusByStaff = (studentId: string, status: User['status']) => {
@@ -807,7 +983,11 @@ export default function App() {
   };
 
   const handleAddEquipment = (newTool: Equipment) => {
-    const nextEquipments = [...db.equipment, newTool];
+    const adjustedTool = {
+      ...newTool,
+      status: (newTool.qty === 0) ? ('NotReady' as const) : newTool.status
+    };
+    const nextEquipments = [...db.equipment, adjustedTool];
     updateDb({ ...db, equipment: nextEquipments });
   };
 
@@ -831,7 +1011,11 @@ export default function App() {
     // Increase equipment stock
     const nextEquipment = db.equipment.map(eq => 
       eq.code === borrowObj.equipmentCode 
-        ? { ...eq, qty: eq.qty + borrowObj.qty } 
+        ? { 
+            ...eq, 
+            qty: eq.qty + borrowObj.qty,
+            status: (eq.qty + borrowObj.qty > 0 && eq.status === 'NotReady') ? ('Ready' as const) : eq.status
+          } 
         : eq
     );
 
@@ -845,9 +1029,30 @@ export default function App() {
   const handleUpdateCalibration = (toolCode: string, calDate: string, status: Equipment['status']) => {
     const nextEquipment = db.equipment.map(eq => 
       eq.code === toolCode 
-        ? { ...eq, calibrationDate: calDate, status } 
+        ? { 
+            ...eq, 
+            calibrationDate: calDate, 
+            status: eq.qty === 0 ? ('NotReady' as const) : status 
+          } 
         : eq
     );
+    updateDb({ ...db, equipment: nextEquipment });
+  };
+
+  const handleUpdateEquipment = (toolCode: string, fields: Partial<Equipment>) => {
+    const nextEquipment = db.equipment.map(eq => {
+      if (eq.code === toolCode) {
+        const nextQty = fields.qty !== undefined ? fields.qty : eq.qty;
+        const nextStatus = nextQty === 0 ? ('NotReady' as const) : (fields.status !== undefined ? fields.status : eq.status);
+        return {
+          ...eq,
+          ...fields,
+          qty: nextQty,
+          status: nextStatus
+        };
+      }
+      return eq;
+    });
     updateDb({ ...db, equipment: nextEquipment });
   };
 
@@ -942,7 +1147,11 @@ export default function App() {
     // Deduct stock Qty
     const nextEquipment = db.equipment.map(eq => 
       eq.code === code 
-        ? { ...eq, qty: eq.qty - qtyNeeded } 
+        ? { 
+            ...eq, 
+            qty: eq.qty - qtyNeeded,
+            status: eq.qty - qtyNeeded === 0 ? ('NotReady' as const) : eq.status
+          } 
         : eq
     );
 
@@ -1382,6 +1591,7 @@ export default function App() {
                 onApproveUser={handleApproveUser}
                 onRejectUser={handleRejectUser}
                 onAddUsageRecord={handleAddUsageRecord}
+                onCancelRoomRequest={handleCancelRoomRequest}
               />
             ) : currentUser.role === 'Maintenance Manager' || currentUser.role === 'Maintenance Staff' ? (
               <MaintenancePanel
@@ -1395,6 +1605,7 @@ export default function App() {
                 onAddEquipment={handleAddEquipment}
                 onCheckReturnEquipment={handleCheckReturnEquipment}
                 onUpdateCalibration={handleUpdateCalibration}
+                onUpdateEquipment={handleUpdateEquipment}
                 onUpdateProfile={handleUpdateProfile}
                 onPrintUsageRecords={() => setShowUsageRecordDoc(true)}
                 onViewRequestDoc={(req) => setActiveRequestDoc(req)}
@@ -1419,6 +1630,7 @@ export default function App() {
                 onViewRequestDoc={(req) => setActiveRequestDoc(req)}
                 onUpdateProfile={handleUpdateProfile}
                 onAddUsageRecord={handleAddUsageRecord}
+                onCancelRoomRequest={handleCancelRoomRequest}
               />
             )}
 

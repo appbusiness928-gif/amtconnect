@@ -11,7 +11,7 @@ import { TraceabilityToolsLogDoc } from './Documents';
 import { 
   Building, Wrench, CheckCircle, Clock, Plus, Tag, 
   Settings, Key, AlertTriangle, ShieldCheck, Printer, Calendar,
-  User as UserIcon, Eye, FileText
+  User as UserIcon, Eye, FileText, Edit3, X
 } from 'lucide-react';
 import { alerts as Swal } from '../lib/alerts';
 
@@ -26,6 +26,7 @@ interface MaintenancePanelProps {
   onAddEquipment: (newTool: Equipment) => void;
   onCheckReturnEquipment: (borrowId: string) => void;
   onUpdateCalibration: (toolCode: string, calDate: string, status: Equipment['status']) => void;
+  onUpdateEquipment?: (toolCode: string, fields: Partial<Equipment>) => void;
   onUpdateProfile: (updated: Partial<User>) => void;
   onPrintUsageRecords?: () => void;
   onViewRequestDoc?: (req: RoomRequest) => void;
@@ -42,6 +43,7 @@ export default function MaintenancePanel({
   onAddEquipment,
   onCheckReturnEquipment,
   onUpdateCalibration,
+  onUpdateEquipment,
   onUpdateProfile,
   onPrintUsageRecords,
   onViewRequestDoc
@@ -51,12 +53,23 @@ export default function MaintenancePanel({
   const [showTraceabilityDoc, setShowTraceabilityDoc] = useState(false);
 
   // Profile Edit states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);
   const [editLastName, setEditLastName] = useState(currentUser.lastName);
   const [editEmail, setEditEmail] = useState(currentUser.email);
   const [editPassword, setEditPassword] = useState(currentUser.password || '');
   const [editPhoto, setEditPhoto] = useState(currentUser.photoUrl);
   const [editSig, setEditSig] = useState(currentUser.signature);
+
+  const handleCancelEditProfile = () => {
+    setEditFirstName(currentUser.firstName);
+    setEditLastName(currentUser.lastName);
+    setEditEmail(currentUser.email);
+    setEditPassword(currentUser.password || '');
+    setEditPhoto(currentUser.photoUrl);
+    setEditSig(currentUser.signature);
+    setIsEditingProfile(false);
+  };
 
   const handleUpdateProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +85,7 @@ export default function MaintenancePanel({
       photoUrl: editPhoto,
       signature: editSig
     });
+    setIsEditingProfile(false);
     Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'แก้ไขข้อมูลของฉันเรียบร้อยแล้ว', confirmButtonColor: '#171717' });
   };
 
@@ -248,9 +262,16 @@ export default function MaintenancePanel({
         {/* TAB 0: PROFILE MANAGEMENT */}
         {activeButtonTab === 'profile' && (
           <form onSubmit={handleUpdateProfileSubmit} className="space-y-4">
-            <h3 className="font-sans font-extrabold text-sm mb-4 border-b pb-2 flex items-center gap-1.5">
-              <UserIcon size={16} />
-              <span>จัดการข้อมูลและลายเซ็นของฉัน (My Profile)</span>
+            <h3 className="font-sans font-extrabold text-sm mb-4 border-b pb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <UserIcon size={16} />
+                <span>จัดการข้อมูลและลายเซ็นของฉัน (My Profile)</span>
+              </span>
+              {!isEditingProfile && (
+                <span className="text-[11px] bg-amber-50 text-amber-800 font-bold border border-amber-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+                  โหมดแสดงข้อมูล (Read-Only)
+                </span>
+              )}
             </h3>
 
             <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-stone-50 border border-neutral-300 rounded mb-4">
@@ -258,21 +279,25 @@ export default function MaintenancePanel({
                 <img src={editPhoto} alt="img" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </div>
               <div className="space-y-1.5 w-full">
-                <span className="font-bold text-neutral-700">อัปเดตรูปถ่ายประจำตำแหน่ง:</span>
-                <input
-                  id="maintPhotoUploadInput"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      const r = new FileReader();
-                      r.onloadend = () => setEditPhoto(r.result as string);
-                      r.readAsDataURL(f);
-                    }
-                  }}
-                  className="block text-xs text-neutral-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-neutral-950 file:text-white hover:file:bg-neutral-850 cursor-pointer"
-                />
+                <span className="font-bold text-neutral-700 block text-xs">รูปถ่ายประจำตำแหน่ง:</span>
+                {isEditingProfile ? (
+                  <input
+                    id="maintPhotoUploadInput"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        const r = new FileReader();
+                        r.onloadend = () => setEditPhoto(r.result as string);
+                        r.readAsDataURL(f);
+                      }
+                    }}
+                    className="block text-xs text-neutral-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-neutral-950 file:text-white hover:file:bg-neutral-850 cursor-pointer"
+                  />
+                ) : (
+                  <p className="text-[10px] text-neutral-500 italic">* กดปุ่มแก้ไขข้อมูลเพื่อเลือกไฟล์รูปภาพใหม่</p>
+                )}
               </div>
             </div>
 
@@ -290,36 +315,99 @@ export default function MaintenancePanel({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-neutral-700 mb-1">ชื่อจริง *</label>
-                <input type="text" required value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900" />
+                <input 
+                  type="text" 
+                  required 
+                  disabled={!isEditingProfile} 
+                  value={editFirstName} 
+                  onChange={(e) => setEditFirstName(e.target.value)} 
+                  className={`w-full border px-3 py-2 rounded focus:outline-none focus:border-neutral-900 ${!isEditingProfile ? 'bg-neutral-100 text-neutral-500 border-neutral-200 cursor-not-allowed' : 'border-neutral-300'}`} 
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-neutral-700 mb-1">นามสกุล *</label>
-                <input type="text" required value={editLastName} onChange={(e) => setEditLastName(e.target.value)} className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900" />
+                <input 
+                  type="text" 
+                  required 
+                  disabled={!isEditingProfile} 
+                  value={editLastName} 
+                  onChange={(e) => setEditLastName(e.target.value)} 
+                  className={`w-full border px-3 py-2 rounded focus:outline-none focus:border-neutral-900 ${!isEditingProfile ? 'bg-neutral-100 text-neutral-500 border-neutral-200 cursor-not-allowed' : 'border-neutral-300'}`} 
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-neutral-700 mb-1">อีเมลสื่อสาร *</label>
-                <input type="email" required value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono" />
+                <input 
+                  type="email" 
+                  required 
+                  disabled={!isEditingProfile} 
+                  value={editEmail} 
+                  onChange={(e) => setEditEmail(e.target.value)} 
+                  className={`w-full border px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono ${!isEditingProfile ? 'bg-neutral-100 text-neutral-500 border-neutral-200 cursor-not-allowed' : 'border-neutral-300'}`} 
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-neutral-700 mb-1">เปลี่ยนรหัสผ่านใหม่ *</label>
-                <input type="password" required value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono" />
+                <input 
+                  type="password" 
+                  required 
+                  disabled={!isEditingProfile} 
+                  value={editPassword} 
+                  onChange={(e) => setEditPassword(e.target.value)} 
+                  className={`w-full border px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono ${!isEditingProfile ? 'bg-neutral-100 text-neutral-500 border-neutral-200 cursor-not-allowed' : 'border-neutral-300'}`} 
+                />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-neutral-700">ปรับปรุงลายเซ็นรับรองเอกสารช่าง *</label>
-              <div className="w-full max-w-md">
-                <SignaturePad onSave={(data) => setEditSig(data)} defaultValue={editSig} />
-              </div>
+              <label className="block text-[10px] font-bold text-neutral-700">ลายเซ็นรับรองเอกสารช่าง *</label>
+              {!isEditingProfile ? (
+                <div className="w-full max-w-sm p-4 bg-stone-100/60 border border-neutral-300 rounded flex items-center justify-center min-h-[96px] select-none">
+                  {editSig ? (
+                    <img src={editSig} alt="Signature Preview" className="max-h-16 object-contain" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-[11px] text-neutral-450 italic">ยังไม่มีลายเซ็นลงทะเบียน</span>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full max-w-md">
+                  <SignaturePad onSave={(data) => setEditSig(data)} defaultValue={editSig} />
+                </div>
+              )}
             </div>
 
-            <div className="pt-2 border-t flex justify-end">
-              <button id="saveMaintProfileBtn" type="submit" className="px-6 py-2 bg-black text-white rounded font-bold hover:bg-neutral-850 cursor-pointer shadow">
-                บันทึกการแก้ไขข้อมูลของฉัน
-              </button>
+            <div className="pt-3 border-t flex justify-end gap-2.5">
+              {!isEditingProfile ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingProfile(true)}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold cursor-pointer shadow-sm flex items-center gap-1.5 transition-colors"
+                >
+                  <Edit3 size={14} />
+                  <span>แก้ไขข้อมูลประจำตัว</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCancelEditProfile}
+                    className="px-4 py-2 bg-neutral-200 hover:bg-neutral-350 text-neutral-800 rounded font-bold cursor-pointer transition-colors flex items-center gap-1"
+                  >
+                    <X size={14} />
+                    <span>ยกเลิก (Cancel)</span>
+                  </button>
+                  <button 
+                    id="saveMaintProfileBtn" 
+                    type="submit" 
+                    className="px-6 py-2 bg-[#0F172A] text-white rounded font-bold hover:bg-neutral-800 cursor-pointer shadow flex items-center gap-1.5 transition-colors"
+                  >
+                    <span>บันทึกการแก้ไขข้อมูลของฉัน</span>
+                  </button>
+                </>
+              )}
             </div>
           </form>
         )}
@@ -504,20 +592,103 @@ export default function MaintenancePanel({
                         <td className="py-2 px-2 font-mono text-neutral-550">{tool.location}</td>
                         <td className="py-2.5 px-2 text-center font-mono font-bold text-neutral-900">{tool.qty}</td>
                         <td className="py-2 px-2 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-bold border ${
-                            tool.status === 'Ready' ? 'bg-emerald-50 text-emerald-805 border-emerald-300' : 'bg-amber-50 text-amber-805 border-amber-300'
-                          }`}>
-                            {tool.status}
-                          </span>
+                          {tool.qty === 0 || tool.status === 'NotReady' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-sans font-bold border bg-rose-50 text-rose-700 border-rose-300">
+                              ไม่พร้อมใช้งาน
+                            </span>
+                          ) : tool.status === 'Ready' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-sans font-bold border bg-emerald-50 text-emerald-800 border-emerald-300">
+                              พร้อมใช้งาน
+                            </span>
+                          ) : tool.status === 'Calibrating' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-sans font-bold border bg-amber-50 text-amber-800 border-amber-300">
+                              กำลังสอบเทียบ
+                            </span>
+                          ) : tool.status === 'Damaged' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-sans font-bold border bg-rose-50 text-rose-800 border-rose-300">
+                              ชำรุด
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-sans font-bold border bg-blue-50 text-blue-800 border-blue-300 font-mono">
+                              {tool.status}
+                            </span>
+                          )}
                         </td>
                         <td className="py-2 px-2 text-center">
-                          <button
-                            id={`inspectQRCodeBtn_${tool.code}`}
-                            onClick={() => setPreviewQRCodeVal(tool.code)}
-                            className="bg-neutral-100 border border-neutral-300 hover:bg-neutral-200 px-2 py-1 rounded text-[10px] font-sans font-semibold cursor-pointer"
-                          >
-                            ดูคิวอาร์โค้ด
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              id={`inspectQRCodeBtn_${tool.code}`}
+                              onClick={() => setPreviewQRCodeVal(tool.code)}
+                              className="bg-neutral-100 border border-neutral-300 hover:bg-neutral-200 px-2 py-1 rounded text-[10px] font-sans font-semibold cursor-pointer"
+                            >
+                              ดูคิวอาร์โค้ด
+                            </button>
+                            {onUpdateEquipment && (
+                              <button
+                                id={`editToolActionBtn_${tool.code}`}
+                                onClick={() => {
+                                  Swal.fire({
+                                    title: 'แก้ไขข้อมูลอุปกรณ์',
+                                    html: `
+                                      <div class="text-left font-sans text-xs space-y-3">
+                                        <div>
+                                          <label class="block font-bold mb-1">ชื่อเครื่องมือ:</label>
+                                          <input id="swalEditToolName" class="w-full border border-neutral-300 rounded px-2 py-1.5 focus:outline-none" value="${tool.toolName}" />
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                          <div>
+                                            <label class="block font-bold mb-1">จำนวนคงคลัง (QTY):</label>
+                                            <input type="number" id="swalEditToolQty" class="w-full border border-neutral-300 rounded px-2 py-1.5 font-mono focus:outline-none" min="0" value="${tool.qty}" />
+                                          </div>
+                                          <div>
+                                            <label class="block font-bold mb-1">ห้องจัดเก็บ / ชั้นวาง:</label>
+                                            <input id="swalEditToolLoc" class="w-full border border-neutral-300 rounded px-2 py-1.5 focus:outline-none" value="${tool.location}" />
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <label class="block font-bold mb-1">สถานะ (ถ้า QTY > 0):</label>
+                                          <select id="swalEditToolStatus" class="w-full border border-neutral-300 rounded px-2 py-1.5 focus:outline-none">
+                                            <option value="Ready" ${tool.status === 'Ready' ? 'selected' : ''}>พร้อมใช้งาน (Ready)</option>
+                                            <option value="Calibrating" ${tool.status === 'Calibrating' ? 'selected' : ''}>กำลังสอบเทียบ (Calibrating)</option>
+                                            <option value="Damaged" ${tool.status === 'Damaged' ? 'selected' : ''}>ชำรุด (Damaged)</option>
+                                          </select>
+                                        </div>
+                                      </div>
+                                    `,
+                                    showCancelButton: true,
+                                    confirmButtonText: 'บันทึก',
+                                    cancelButtonText: 'ยกเลิก',
+                                    confirmButtonColor: '#171717',
+                                    preConfirm: () => {
+                                      const name = (document.getElementById('swalEditToolName') as HTMLInputElement).value;
+                                      const qtyVal = parseInt((document.getElementById('swalEditToolQty') as HTMLInputElement).value) || 0;
+                                      const loc = (document.getElementById('swalEditToolLoc') as HTMLInputElement).value;
+                                      const stat = (document.getElementById('swalEditToolStatus') as HTMLSelectElement).value as Equipment['status'];
+                                      return { name, qtyVal, loc, stat };
+                                    }
+                                  }).then((result) => {
+                                    if (result.isConfirmed && result.value) {
+                                      const { name, qtyVal, loc, stat } = result.value;
+                                      onUpdateEquipment(tool.code, {
+                                        toolName: name,
+                                        qty: qtyVal,
+                                        location: loc,
+                                        status: qtyVal === 0 ? 'NotReady' : stat
+                                      });
+                                      Swal.fire({
+                                        icon: 'success',
+                                        title: 'บันทึกข้อมูลเรียบร้อย',
+                                        confirmButtonColor: '#10b981'
+                                      });
+                                    }
+                                  });
+                                }}
+                                className="bg-neutral-900 text-white hover:bg-neutral-800 px-2 py-1 rounded text-[10px] font-sans font-semibold cursor-pointer"
+                              >
+                                แก้ไข
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -588,10 +759,10 @@ export default function MaintenancePanel({
                   <input
                     id="addToolQtyInput"
                     type="number"
-                    min={1}
+                    min={0}
                     required
                     value={qty}
-                    onChange={(e) => setQty(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setQty(Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono"
                   />
                 </div>
