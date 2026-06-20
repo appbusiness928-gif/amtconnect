@@ -161,8 +161,13 @@ function doPost(e) {
         throw new Error("Missing recipient, subject, or body parameter");
       }
       
-      // ส่งอีเมลโดยใช้ MailApp.sendEmail (รองรับการส่งเมลจากบัญชีผู้เปิดบัญชีตัวกูเกิลแอปสคริปต์นี้)
-      MailApp.sendEmail(recipient, subject, body);
+      // ส่งอีเมลโดยใช้ GmailApp (เพื่อบันทึกลงกล่องขาออกของผู้ใช้และเพิ่มอัตราความเสถียรในการเข้ารหัสผ่าน Gmail) หรือสลับใช้ MailApp หากตรวจพบข้อจำกัด
+      try {
+        GmailApp.sendEmail(recipient, subject, body);
+      } catch (gmailErr) {
+        Logger.log("สลับไปใช้ MailApp เนื่องจากเกิดข้อผิดพลาดในการเชื่อมต่อ GmailApp: " + gmailErr.toString());
+        MailApp.sendEmail(recipient, subject, body);
+      }
       responseData = {
         success: true,
         message: "ส่งอีเมลแจ้งเตือนไปยัง " + recipient + " เรียบร้อยแล้ว!"

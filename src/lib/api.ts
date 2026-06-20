@@ -503,7 +503,46 @@ export async function sendEmailNotification(recipient: string, subject: string, 
       subject,
       body,
     });
+
+    try {
+      // ลองค้นหาโดยใช้ CORS ก่อน เพื่อให้สามารถอ่าน JSON หรือดักจับข้อผิดพลาดจริงจาก Apps Script ได้
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: payload,
+      });
+
+      if (response.ok) {
+        const text = await response.text();
+        try {
+          const resJson = JSON.parse(text);
+          if (resJson && resJson.success === false) {
+            return {
+              success: false,
+              message: resJson.error || resJson.message || 'ระบบหลังบ้าน Google Script ส่งคืนข้อผิดพลาด',
+            };
+          }
+          return {
+            success: true,
+            message: `ส่งอีเมลแจ้งเตือนไปยัง ${recipient} สำเร็จ`,
+          };
+        } catch {
+          // หากผลลัพธ์เป็น HTML หรือหน้าจอขอสิทธิ์สุกดิบ บ่งบอกว่าไม่ได้ให้สิทธิ์ GmailApp
+          if (text.includes('script.google.com') || text.includes('Authorization') || text.includes('drive.google.com') || text.includes('error')) {
+            return {
+              success: false,
+              message: 'Google Apps Script ต้องการการอนุญาตสิทธิ์เข้าถึง Gmail เท่านั้น กรุณากดปุ่มเรียกใช้ฟังก์ชันใน Apps Script ของท่านด้วยตนเองครั้งแรกเพื่อยืนยัน Consent',
+            };
+          }
+        }
+      }
+    } catch (corsErr: any) {
+      console.warn('CORS check bypassed/failed, trying compatibility mode:', corsErr);
+    }
     
+    // โหมดเกื้อกูลความเข้ากันได้แบบเก่า (no-cors)
     await fetch(url, {
       method: 'POST',
       mode: 'no-cors',
@@ -515,7 +554,7 @@ export async function sendEmailNotification(recipient: string, subject: string, 
     
     return {
       success: true,
-      message: `ส่งอีเมลแจ้งเตือนไปยัง ${recipient} สำเร็จ`,
+      message: `ส่งอีเมลแจ้งเตือนไปยัง ${recipient} แล้ว (ผ่านโหมดรองรับความปลอดภัย - โปรดตรวจเช็คความถูกต้องของสิทธิ์หากยังไม่ได้รับอีเมล)`,
     };
   } catch (err: any) {
     console.error('Failed to send email notification:', err);

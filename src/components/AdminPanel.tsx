@@ -360,19 +360,6 @@ export default function AdminPanel({
           </button>
         </div>
 
-        <button
-          id="adminSheetsSettingsBtn"
-          onClick={() => setShowSheetsConfig(!showSheetsConfig)}
-          type="button"
-          className={`px-4 py-2 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-2 border w-full md:w-auto md:ml-auto ${
-            showSheetsConfig 
-              ? 'bg-indigo-600 text-white shadow-xs border-indigo-600' 
-              : 'text-slate-600 hover:text-slate-900 bg-slate-50 border-slate-200 hover:bg-slate-100'
-          }`}
-        >
-          <Settings size={14} />
-          <span>ตั้งค่า Google Sheets & Email</span>
-        </button>
       </div>
 
       {showSheetsConfig && (
