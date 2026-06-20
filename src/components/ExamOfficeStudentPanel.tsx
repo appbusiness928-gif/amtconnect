@@ -15,6 +15,7 @@ import { alerts as Swal } from '../lib/alerts';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { getAppOriginForQR } from '../lib/api';
 import { TraceabilityToolsLogDoc } from './Documents';
+import AcademicDataSection from './AcademicDataSection';
 
 const TIME_OPTIONS = [
   "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
@@ -159,7 +160,7 @@ export default function ExamOfficeStudentPanel({
   };
 
   // State Tabs
-  const [activeTab, setActiveTab] = useState<'profile' | 'action' | 'schedule' | 'borrow' | 'roster' | 'requests'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'action' | 'schedule' | 'academic' | 'borrow' | 'roster' | 'requests'>('profile');
 
   // Instructor Action Tab Switcher (Schedule management vs Lab requests)
   const [instActionTab, setInstActionTab] = useState<'schedule' | 'room'>('schedule');
@@ -710,18 +711,55 @@ export default function ExamOfficeStudentPanel({
           <span>ข้อมูลห้องเรียนของฉัน</span>
         </button>
 
-        <button
-          id="seoActionBtn"
-          onClick={() => setActiveTab('action')}
-          className={`w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'action' ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
-          }`}
-        >
-          <Calendar size={14} />
-          <span>
-            {isOffice || isInstructor ? 'จัดการตารางเรียนและสอน' : isExam ? 'จัดประกาศสอบ & คะแนน' : 'ขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง'}
-          </span>
-        </button>
+        {/* If Office Staff or Instructor, show direct button for "จัดการตารางเรียนและสอน" */}
+        {(isOffice || isInstructor) && (
+          <button
+            id="seoScheduleBtn"
+            onClick={() => {
+              setActiveTab('action');
+              setInstActionTab('schedule');
+            }}
+            className={`w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'action' && instActionTab === 'schedule' ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            <Calendar size={14} />
+            <span>จัดการตารางเรียนและสอน</span>
+          </button>
+        )}
+
+        {/* If Exam Staff, show "จัดประกาศสอบ & คะแนน" */}
+        {isExam && (
+          <button
+            id="seoExamActionBtn"
+            onClick={() => setActiveTab('action')}
+            className={`w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'action' ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            <Calendar size={14} />
+            <span>จัดประกาศสอบ & คะแนน</span>
+          </button>
+        )}
+
+        {/* "ขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง" - Now a direct button for Students, Instructors, and Office! */}
+        {(isStudent || isInstructor || isOffice) && (
+          <button
+            id="seoRoomRequestSidebarBtn"
+            onClick={() => {
+              setActiveTab('action');
+              if (isInstructor || isOffice) {
+                setInstActionTab('room');
+              }
+            }}
+            className={`w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'action' && (isStudent || instActionTab === 'room') ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            <Calendar size={14} />
+            <span>ขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง</span>
+          </button>
+        )}
 
         {!isOffice && !isExam && (
           <button
@@ -760,15 +798,14 @@ export default function ExamOfficeStudentPanel({
 
         {isStudent && (
           <button
-            id="seoEditProfileBtn"
-            onClick={() => {
-              setActiveTab('profile');
-              setIsEditingProfile(true);
-            }}
-            className="w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100"
+            id="seoAcademicBtn"
+            onClick={() => setActiveTab('academic')}
+            className={`w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'academic' ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+            }`}
           >
-            <Edit3 size={14} />
-            <span>แก้ไขข้อมูลส่วนตัว</span>
+            <Award size={14} />
+            <span>ข้อมูลการเรียน</span>
           </button>
         )}
       </div>
@@ -788,24 +825,9 @@ export default function ExamOfficeStudentPanel({
             <form onSubmit={handleUpdateProfileSubmit} className="space-y-4 bg-stone-50 border border-neutral-300 p-4 rounded">
               <div className="flex items-center justify-between border-b pb-1">
                 <h4 className="font-bold text-neutral-900 text-xs">แก้ไขประวัติข้อมูลและรูปภาพลายเซ็น</h4>
-                {!isEditingProfile && (
-                  <span className="text-[10px] bg-amber-50 text-amber-800 font-bold border border-amber-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-                    โหมดแสดงข้อมูล (Read-Only)
-                  </span>
-                )}
+                
+                
               </div>
-
-              {!isEditingProfile && (
-                <div className="bg-amber-50 border-l-4 border-amber-500 p-3.5 my-2.5 rounded-r shadow-xs animate-fade-in select-none">
-                  <div className="flex gap-2">
-                    <span className="text-amber-600 font-bold text-xs">⚠️ แจ้งเตือน:</span>
-                    <div className="text-[10.5px] text-amber-900 leading-normal font-sans">
-                      <p className="font-extrabold text-amber-950">ข้อมูลถูกล็อกไว้เป็นโหมดแสดงผล (Read-Only Mode) เพื่อความปลอดภัย</p>
-                      <p className="mt-1 font-semibold text-neutral-700">กรุณากดปุ่ม <strong className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 font-bold">"แก้ไขข้อมูลส่วนตัว"</strong> สีเขียวด้านล่างสุดของฟอร์มก่อน จึงจะสามารถแก้ลายเซ็น บันทึกรหัสผ่านใหม่ หรืออัปรูปภาพได้</p>
-                    </div>
-                  </div>
-                </div>
-              )}
               
               <div className="flex flex-col sm:flex-row items-center gap-6 p-2 rounded mb-1">
                 <div className="w-16 h-20 rounded border border-neutral-400 overflow-hidden shrink-0">
@@ -887,12 +909,24 @@ export default function ExamOfficeStudentPanel({
               <div className="space-y-1.5">
                 <label className="block text-[9px] font-bold text-neutral-800">ปรับแก้ลายเซ็นมือถือรับรองรายงาน *</label>
                 {!isEditingProfile ? (
-                  <div className="w-full max-w-sm p-4 bg-stone-150 border border-neutral-300 rounded flex items-center justify-center min-h-[96px] select-none">
-                    {editSig ? (
-                      <img src={editSig} alt="Signature Preview" className="max-h-16 object-contain" referrerPolicy="no-referrer" />
-                    ) : (
-                      <span className="text-[11px] text-neutral-450 italic">ยังไม่มีลายเซ็นลงทะเบียน</span>
-                    )}
+                  <div className="w-full max-w-sm space-y-2">
+                    <div className="w-full p-4 bg-stone-150 border border-neutral-300 rounded flex items-center justify-center min-h-[96px] select-none">
+                      {editSig ? (
+                        <img src={editSig} alt="Signature Preview" className="max-h-16 object-contain" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="text-[11px] text-neutral-450 italic">ยังไม่มีลายเซ็นลงทะเบียน</span>
+                      )}
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingProfile(true)}
+                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold cursor-pointer text-[10px] shadow-sm transition-colors"
+                      >
+                        <Edit3 size={12} />
+                        <span>แก้ไขข้อมูลส่วนตัว</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="w-full max-w-sm">
@@ -949,325 +983,14 @@ export default function ExamOfficeStudentPanel({
               </div>
             </div>
 
-            {/* NEW ADDED SECTION: Schedule Table */}
-            <div className="border border-neutral-300 rounded-lg p-4 bg-white shadow-sm space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <h4 className="font-bold text-neutral-900 text-xs">ตารางเรียนตามวันที่ที่เลือก</h4>
-                <input
-                  type="date"
-                  value={tableDate}
-                  onChange={(e) => setTableDate(e.target.value)}
-                  className="border border-neutral-300 px-2 py-1 rounded text-xs font-mono"
-                />
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-[11px]">
-                  <thead>
-                    <tr className="border-b bg-stone-50">
-                      <th className="p-2">รหัสวิชา</th>
-                      <th className="p-2">ชื่อวิชา</th>
-                      <th className="p-2">ครูผู้สอน</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {classSchedules
-                      .filter(s => {
-                        // Very simple filter: checks if today is within the start/end date range
-                        // and matches a day of the week
-                        const d = new Date(tableDate);
-                        const start = new Date(s.startDate);
-                        const end = new Date(s.endDate);
-                        const dayOfWeek = getThaiDayOfWeek(d);
-                        return d >= start && d <= end && matchesDayOfWeek(s.dayOfWeek, dayOfWeek);
-                      })
-                      .map(s => (
-                        <tr key={s.id} className="border-b hover:bg-neutral-50">
-                          <td className="p-2 font-mono">{s.subjectCode}</td>
-                          <td className="p-2 font-bold">{s.subjectName}</td>
-                          <td className="p-2">{s.instructorName}</td>
-                        </tr>
-                      ))
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
             {/* End of content */}
+          </div>
+        )}
 
-            {/* If Student, show class schedule and grades */}
-            {isStudent && (
-              <div className="space-y-4">
-                <div className="border border-neutral-350 rounded-xl p-4 bg-white shadow-xs">
-                  
-                  {/* Calendar view selector and Batch selector */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-neutral-900 text-white rounded-lg">
-                        <Calendar size={15} />
-                      </div>
-                      <div>
-                        <h4 className="font-sans font-extrabold text-[12px] text-neutral-950 uppercase tracking-tight">
-                          ตารางแผนจัดวิชาเรียนและสอบประจำรุ่น (รุ่น {scheduleBatch})
-                        </h4>
-                      </div>
-                    </div>
-                    
-                    <div className="flex border border-neutral-300 rounded p-0.5 bg-neutral-50 shrink-0">
-                      <button
-                        type="button"
-                        id="btnCalendarViewMonthly"
-                        onClick={() => setCalendarViewMode('monthly')}
-                        className={`px-3 py-1.5 rounded-sm text-[10px] font-bold cursor-pointer transition-all ${
-                          calendarViewMode === 'monthly' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-neutral-500 hover:text-neutral-950'
-                        }`}
-                      >
-                        รายเดือน (Monthly View)
-                      </button>
-                      <button
-                        type="button"
-                        id="btnCalendarViewWeekly"
-                        onClick={() => setCalendarViewMode('weekly')}
-                        className={`px-3 py-1.5 rounded-sm text-[10px] font-bold cursor-pointer transition-all ${
-                          calendarViewMode === 'weekly' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-neutral-500 hover:text-neutral-900'
-                        }`}
-                      >
-                        ตารางรายสัปดาห์ (Weekly Grid)
-                      </button>
-                    </div>
-                  </div>
-
-                  {calendarViewMode === 'monthly' ? (
-                    <div className="space-y-4 animate-fade-in">
-                      {/* Year-Month Navigator Controls */}
-                      <div className="flex justify-between items-center bg-stone-50 p-2 border border-neutral-200 rounded-lg">
-                        <button
-                          type="button"
-                          id="btnPrevMonth"
-                          onClick={handlePrevMonth}
-                          className="px-3 py-1.5 text-[10px] font-black bg-white border border-neutral-300 hover:bg-neutral-100 rounded-lg shadow-3xs cursor-pointer select-none"
-                        >
-                          &larr; เดือนก่อนหน้า
-                        </button>
-                        <span className="font-sans font-extrabold text-xs text-neutral-900 text-center">
-                          {THAI_MONTH_NAMES[currentCalendarDate.getMonth()]} {currentCalendarDate.getFullYear() + 543} (June 2026 Sandbox)
-                        </span>
-                        <button
-                          type="button"
-                          id="btnNextMonth"
-                          onClick={handleNextMonth}
-                          className="px-3 py-1.5 text-[10px] font-black bg-white border border-neutral-300 hover:bg-neutral-100 rounded-lg shadow-3xs cursor-pointer select-none"
-                        >
-                          เดือนถัดไป &rarr;
-                        </button>
-                      </div>
-
-                      {/* 7 Columns Day Names */}
-                      <div className="grid grid-cols-7 gap-1.5 text-center font-sans font-bold text-[9px] text-neutral-500 uppercase tracking-widest py-1 border-b border-dashed border-neutral-200">
-                        <span className="text-red-500 font-extrabold">อา. (Sun)</span>
-                        <span>จ. (Mon)</span>
-                        <span>อ. (Tue)</span>
-                        <span>พ. (Wed)</span>
-                        <span>พฤ. (Thu)</span>
-                        <span>ศ. (Fri)</span>
-                        <span className="text-purple-600 font-extrabold">ส. (Sat)</span>
-                      </div>
-
-                      {/* Day Grid Cell Rendering */}
-                      <div className="grid grid-cols-7 gap-1.5">
-                        {(() => {
-                          const year = currentCalendarDate.getFullYear();
-                          const month = currentCalendarDate.getMonth();
-                          const firstDay = new Date(year, month, 1);
-                          const startDay = firstDay.getDay();
-                          const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-                          const cells: Date[] = [];
-                          for (let i = startDay - 1; i >= 0; i--) {
-                            cells.push(new Date(year, month, -i));
-                          }
-                          for (let i = 1; i <= daysInMonth; i++) {
-                            cells.push(new Date(year, month, i));
-                          }
-                          const rem = (7 - (cells.length % 7)) % 7;
-                          for (let i = 1; i <= rem; i++) {
-                            cells.push(new Date(year, month + 1, i));
-                          }
-                          while (cells.length < 35) {
-                            const lastD = cells[cells.length - 1];
-                            cells.push(new Date(lastD.getFullYear(), lastD.getMonth(), lastD.getDate() + 1));
-                          }
-
-                          return cells.map((cellDate, index) => {
-                            const isCurrentM = cellDate.getMonth() === month;
-                            const isToday = cellDate.toDateString() === new Date().toDateString();
-                            const currDateStr = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, '0')}-${String(cellDate.getDate()).padStart(2, '0')}`;
-                            const cellDayThaiName = getThaiDayOfWeek(cellDate);
-
-                            const rowClassesOnThisDay = classSchedules.filter(s => {
-                              if (s.batch !== scheduleBatch) return false;
-                              const isWithinRange = (!s.startDate || currDateStr >= s.startDate) && (!s.endDate || currDateStr <= s.endDate);
-                              return matchesDayOfWeek(s.dayOfWeek, cellDayThaiName) && isWithinRange;
-                            });
-
-                            const rowExamsOnThisDay = examSchedules.filter(ex => {
-                              return ex.batch === scheduleBatch && ex.date === currDateStr;
-                            });
-
-                            return (
-                              <div
-                                key={index}
-                                className={`min-h-[80px] sm:min-h-[100px] p-1.5 border rounded-lg flex flex-col justify-between transition-all hover:bg-neutral-50 relative ${
-                                  isCurrentM ? 'bg-white border-neutral-200' : 'bg-neutral-50/60 border-neutral-150 opacity-40'
-                                } ${isToday ? 'ring-2 ring-neutral-950 border-neutral-950' : ''}`}
-                              >
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className={`text-[10px] font-mono leading-none ${
-                                    isToday ? 'bg-neutral-950 text-white w-5 h-5 rounded-full flex items-center justify-center font-extrabold' : 'text-neutral-700 font-bold'
-                                  }`}>
-                                    {cellDate.getDate()}
-                                  </span>
-                                  {isToday && (
-                                    <span className="text-[7px] text-neutral-900 font-black uppercase tracking-tight">Today</span>
-                                  )}
-                                </div>
-
-                                <div className="flex-1 flex flex-col gap-1 overflow-y-auto max-h-[60px] scrollbar-thin">
-                                  {rowClassesOnThisDay.map(cs => (
-                                    <button
-                                      key={cs.id}
-                                      type="button"
-                                      onClick={() => handleShowScheduleDetails(cs, cellDate)}
-                                      className="w-full text-left bg-neutral-900 border border-neutral-950 text-white rounded px-1.5 py-0.5 text-[8.5px] leading-tight font-sans truncate hover:opacity-85 shadow-3xs cursor-pointer block font-extrabold"
-                                      title={`คลาส: ${cs.subjectCode} - ${cs.subjectName}`}
-                                    >
-                                      🕒 {cs.subjectCode}
-                                    </button>
-                                  ))}
-
-                                  {rowExamsOnThisDay.map(ex => (
-                                    <button
-                                      key={ex.id}
-                                      type="button"
-                                      onClick={() => handleShowExamDetails(ex)}
-                                      className="w-full text-left bg-red-600 border border-red-700 text-white rounded px-1.5 py-0.5 text-[8.5px] leading-tight font-sans truncate hover:opacity-85 shadow-3xs cursor-pointer block font-extrabold"
-                                      title={`สอบ: ${ex.subjectName}`}
-                                    >
-                                      📝 สอบ: {ex.subjectName}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </div>
-                  ) : (
-                    /* Calendar Grid Representation of classSchedules (Weekly Grid fallback) */
-                    <div className="grid grid-cols-1 sm:grid-cols-7 gap-3 animate-fade-in">
-                      {DAYS_OF_WEEK_LIST.map((day) => {
-                        const daySchedules = classSchedules.filter(
-                          (s) => s.batch === scheduleBatch && matchesDayOfWeek(s.dayOfWeek, day.key)
-                        );
-                        return (
-                          <div key={day.key} className="border border-neutral-200 rounded overflow-hidden flex flex-col h-32 bg-stone-50/50 hover:shadow-2xs transition-shadow">
-                            {/* Day header bar */}
-                            <div className={`px-2 py-1 text-center font-sans font-black text-[9px] uppercase tracking-tight text-white ${
-                              day.key === 'จันทร์' ? 'bg-yellow-600' :
-                              day.key === 'อังคาร' ? 'bg-pink-600' :
-                              day.key === 'พุธ' ? 'bg-emerald-600' :
-                              day.key === 'พฤหัส' ? 'bg-amber-600' :
-                              day.key === 'ศุกร์' ? 'bg-sky-600' :
-                              day.key === 'เสาร์' ? 'bg-purple-600' :
-                              'bg-red-600'
-                            }`}>
-                              {day.name}
-                            </div>
-
-                            {/* Day classes container */}
-                            <div className="p-1.5 flex-1 flex flex-col gap-1.5 overflow-y-auto">
-                              {daySchedules.map((s) => (
-                                <div key={s.id} className="p-1.5 rounded border border-neutral-300 bg-white shadow-3xs flex flex-col justify-between text-[9px] leading-tight">
-                                  <div>
-                                    <span className="font-mono text-[7.5px] font-bold text-neutral-400 block tracking-tight">
-                                      {s.subjectCode}
-                                    </span>
-                                    <span className="font-bold text-neutral-900 block truncate" title={s.subjectName}>
-                                      {s.subjectName}
-                                    </span>
-                                  </div>
-                                  <div className="border-t border-dashed border-neutral-150 my-1" />
-                                  <span className="text-[7.5px] text-neutral-600 italic block truncate">
-                                    ครู: {s.instructorName || 'Unassigned'}
-                                  </span>
-                                </div>
-                              ))}
-                              {daySchedules.length === 0 && (
-                                <div className="flex-1 flex items-center justify-center text-center">
-                                  <span className="text-[8px] text-neutral-400 italic">No classes</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Exam schedule & Grades */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="border border-neutral-300 rounded p-4">
-                    <h4 className="font-bold text-xs mb-2 flex items-center gap-1 text-neutral-950">
-                      <BookOpen size={14} />
-                      <span>ปฏิทินสอบกลางภาค/ปลายภาค (รุ่น {studentBatch})</span>
-                    </h4>
-                    <div className="space-y-2">
-                      {examSchedules
-                        .filter(ex => ex.batch === studentBatch)
-                        .map(ex => (
-                          <div key={ex.id} className="p-2 border border-neutral-200 rounded bg-stone-50 text-[11px]">
-                            <p className="font-bold">{ex.subjectName}</p>
-                            <p className="text-[10px] text-neutral-500">วันสอบ: {ex.date} เวลา ({ex.time})</p>
-                          </div>
-                        ))}
-                      {examSchedules.filter(ex => ex.batch === studentBatch).length === 0 && (
-                        <p className="text-neutral-450 italic text-center py-4">ไม่มีตารางสอบประกาศขณะนี้</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="border border-neutral-350 rounded p-4">
-                    <h4 className="font-bold text-xs mb-2 flex items-center gap-1 text-neutral-950">
-                      <Award size={14} />
-                      <span>สมุดประเมินประกาศคะแนนสอบ</span>
-                    </h4>
-                    <div className="space-y-2">
-                      {examGrades
-                        .filter(eg => eg.batch === studentBatch)
-                        .map(eg => {
-                          const scoreObj = eg.grades.find(g => g.studentId === currentUser.id);
-                          return (
-                            <div key={eg.id} className="p-2 border border-neutral-200 rounded flex items-center justify-between bg-stone-50 text-[11px]">
-                              <div>
-                                <p className="font-bold">{eg.subjectName}</p>
-                                <p className="text-[10px] text-neutral-400">ประเมินครั้งที่ {eg.round}</p>
-                              </div>
-                              <span className="font-mono text-xs font-bold bg-neutral-950 text-white px-2 py-0.5 rounded">
-                                {scoreObj ? `${scoreObj.score} คะแนน` : 'ไม่มีคะแนน'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      {examGrades.filter(eg => eg.batch === studentBatch).length === 0 && (
-                        <p className="text-neutral-450 italic text-center py-4">ยังไม่มีการประกาศคะแนนกลางกลุ่ม</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+        {/* TAB 1.5: ACADEMIC DATA */}
+        {isStudent && activeTab === 'academic' && (
+          <div className="animate-fade-in">
+            <AcademicDataSection classSchedules={classSchedules} examSchedules={examSchedules} examGrades={examGrades} currentUser={currentUser} />
           </div>
         )}
 
@@ -1275,34 +998,10 @@ export default function ExamOfficeStudentPanel({
         {activeTab === 'action' && (
           <div className="space-y-6 animate-fade-in">
             
-            {/* If Instructor: show switcher between Schedule and Room booking */}
-            {isInstructor && (
-              <div className="flex bg-neutral-100 p-1 rounded-lg border border-neutral-200 mb-2 w-fit">
-                <button
-                  type="button"
-                  id="btnInstActionSchedule"
-                  onClick={() => setInstActionTab('schedule')}
-                  className={`px-4 py-1.5 rounded-md font-sans font-bold text-[10px] transition-all cursor-pointer ${
-                    instActionTab === 'schedule' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-650 hover:text-slate-900'
-                  }`}
-                >
-                  เปิดคอร์สและลงตารางเรียนนักศึกษา (Add Schedules)
-                </button>
-                <button
-                  type="button"
-                  id="btnInstActionRoom"
-                  onClick={() => setInstActionTab('room')}
-                  className={`px-4 py-1.5 rounded-md font-sans font-bold text-[10px] transition-all cursor-pointer ${
-                    instActionTab === 'room' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-650 hover:text-slate-900'
-                  }`}
-                >
-                  เขียนใบร้องขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง (Room Request)
-                </button>
-              </div>
-            )}
+            {/* Content per subtab */}
 
-            {/* If OFFICE or (INSTRUCTOR with 'schedule' subtab): ADD/EDIT SCHEDULES */}
-            {(isOffice || (isInstructor && instActionTab === 'schedule')) && (
+            {/* If (OFFICE or INSTRUCTOR) with 'schedule' subtab: ADD/EDIT SCHEDULES */}
+            {((isOffice || isInstructor) && instActionTab === 'schedule') && (
               <form onSubmit={handleCreateSchedule} className="space-y-4">
                 <h3 className="font-sans font-extrabold text-sm border-b pb-2 text-neutral-950 uppercase">
                   เปิดคอร์สวิชาและลงตารางเรียนนักศึกษาการช่าง
@@ -1635,8 +1334,8 @@ export default function ExamOfficeStudentPanel({
               </div>
             )}
 
-            {/* If STUDENT or (INSTRUCTOR with 'room' subtab): SUBMIT ROOM REQUEST OR RECORD DIRECT USAGE */}
-            {(isStudent || (isInstructor && instActionTab === 'room')) && (
+            {/* If STUDENT or ((INSTRUCTOR or OFFICE) with 'room' subtab): SUBMIT ROOM REQUEST OR RECORD DIRECT USAGE */}
+            {(isStudent || ((isInstructor || isOffice) && instActionTab === 'room')) && (
               <div className="space-y-6">
                 {/* Switcher pills */}
                 <div className="flex gap-2 p-1 bg-neutral-100 rounded-lg w-full max-w-md no-print">
