@@ -770,7 +770,61 @@ export default function App() {
 
     const nextUsers = db.users.map(u => u.id === userId ? { ...u, status: 'Active' as const } : u);
     updateDb({ ...db, users: nextUsers });
-    Swal.fire('อนุมัติแล้ว', `อนุมัติสิทธิ์ความปลอดภัยผู้ใช้นี้เรียบร้อย`, 'success');
+
+    // Send email notification to approved user
+    if (userToApprove.email) {
+      const emailSubject = `[AMT CONNECT] บัญชีผู้ใช้งานได้รับการอนุมัติใช้งานแล้ว`;
+      const emailBody = `สวัสดีคุณ ${userToApprove.firstName} ${userToApprove.lastName},
+
+ฝ่ายจัดการระบบของศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT ได้พิจารณาและอนุมัติบัญชีผู้ใช้งานของคุณแล้วเมื่อวันที่ ${new Date().toLocaleDateString('th-TH')}
+
+รายละเอียดบัญชีการเข้าใช้งาน:
+- รหัสประจำตัว/รหัสนักศึกษา: ${userToApprove.id}
+- ชื่อ-นามสกุล: ${userToApprove.firstName} ${userToApprove.lastName}
+- บทบาทหน้าที่: ${userToApprove.role}
+- สถานะระบบ: ✅ Active (พร้อมใช้งาน)
+
+ขณะนี้ท่านสามารถนำรหัสประจำตัวของคุณสแกน/สืบค้นบนอุปกรณ์ปลายทางเพื่อเข้าใช้งาน ขอยืมเครื่องมือ หรือขอใช้ห้องปฏิบัติการได้ตามสิทธิ์ของบทบาทตนเองในระบบเรียบร้อยแล้วค่ะ/ครับ
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      Swal.fire({
+        title: 'กำลังอนุมัติสิทธิ์...',
+        text: 'กรุณารอสักครู่ ระบบกำลังสื่อสารกับเครื่องส่งเมล',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      sendEmailNotification(userToApprove.email, emailSubject, emailBody).then((emailRes) => {
+        if (emailRes.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'อนุมัติผู้ใช้สำเร็จ!',
+            text: `อนุมัติสิทธิ์บัญชีเรียบร้อย และระบบส่งจดหมายตอบรับสำเร็จไปยัง ${userToApprove.email}`,
+            confirmButtonColor: '#0F172A'
+          });
+        } else {
+          Swal.fire({
+            icon: 'warning',
+            title: 'อนุมัติสำเร็จ แต่อีเมลล้มเหลว',
+            text: `ฝ่ายทะเบียนได้รับการเปิดสิทธิ์เข้าระบบแล้ว แต่อีเมลส่งแจ้งตอบกลับขัดข้อง: ${emailRes.message} (โปรดขอให้ Admin นำ Google Apps Script Web App URL บัญชีของท่านไปบันทึกตรงแผง Admin Settings เพื่อปลดล็อก)`,
+            confirmButtonColor: '#0F172A'
+          });
+        }
+      }).catch((err) => {
+        Swal.fire({
+          icon: 'warning',
+          title: 'อนุมัติสำเร็จ แต่ติดต่อส่งเมลขัดข้อง',
+          text: `สิทธิ์ผู้ใช้เปิดแล้ว แต่การเชื่อมต่อเครือข่ายส่งอีเมลล้มเหลว: ${err.message || err}`,
+          confirmButtonColor: '#0F172A'
+        });
+      });
+    } else {
+      Swal.fire('อนุมัติแล้ว', `อนุมัติสิทธิ์ความปลอดภัยผู้ใช้นี้เรียบร้อย`, 'success');
+    }
   };
 
   const handleRejectUser = (userId: string) => {
@@ -780,8 +834,63 @@ export default function App() {
   };
 
   const handleUpdateStudentStatus = (userId: string, newStatus: User['status']) => {
+    const targetUser = db.users.find(u => u.id === userId);
     const nextUsers = db.users.map(u => u.id === userId ? { ...u, status: newStatus } : u);
     updateDb({ ...db, users: nextUsers });
+
+    // Send email notification to updated user
+    if (targetUser && targetUser.email) {
+      const emailSubject = `[AMT CONNECT] ปรับเปลี่ยนสถานะบัญชีนักศึกษา/ผู้ใช้งานในระบบ`;
+      const emailBody = `สวัสดีคุณ ${targetUser.firstName} ${targetUser.lastName},
+
+ระบบได้รับข้อมูลการขออัปเดตหรือมีการปรับเปลี่ยนสถานะข้อมูลบัญชีของคุณเมื่อวันที่ ${new Date().toLocaleDateString('th-TH')}
+
+รายละเอียดการเปลี่ยนแปลง:
+- รหัสนักศึกษา/รหัสประจำตัว: ${targetUser.id}
+- ชื่อ-นามสกุล: ${targetUser.firstName} ${targetUser.lastName}
+- สถานะใหม่ในระบบ: ${newStatus}
+
+หากการเปลี่ยนสถานะดังกล่าวส่งผลให้ช่องทางการเข้าใช้ห้องหรืออุปกรณ์พังเสียหาย/ถูกยกเลิก โปรดเข้าสู่ระบบหรือติดต่อแอดมินหรือผู้ควบคุมที่ดูแลระบบเพื่อสอบถามรายละเอียดเพิ่มเติม
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      Swal.fire({
+        title: 'กำลังสลักข้อมูลใหม่...',
+        text: 'กรุณารอสักครู่ ระบบกำลังปรับปรุงและส่งเมลตรวจสอบสิทธิ์',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      sendEmailNotification(targetUser.email, emailSubject, emailBody).then((emailRes) => {
+        if (emailRes.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'เปลี่ยนสถานะสำเร็จ',
+            text: `สันทัดสถานะใหม่เป็น ${newStatus} และระบบได้จัดส่งอีเมลแจ้งถึงผู้ถือบัญชี ${targetUser.email} แล้ว`,
+            confirmButtonColor: '#0F172A'
+          });
+        } else {
+          Swal.fire({
+            icon: 'warning',
+            title: 'เปลี่ยนสถานะแล้ว แต่อีเมลล้มเหลว',
+            text: `ระบบปรับข้อมูลเป็น ${newStatus} เรียบร้อย แต่อีเมลสะท้อนกลับไม่สำเร็จ: ${emailRes.message} (โปรดตรวจสอบลิงก์ Google Script API ในการควบคุม)`,
+            confirmButtonColor: '#0F172A'
+          });
+        }
+      }).catch((err) => {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ปรับปรุงสำเร็จ แต่ส่งเมลขัดข้อง',
+          text: `เปลี่ยนสถานะเป็น ${newStatus} สำเร็จ แต่พบข้อผิดพลาด: ${err.message || err}`,
+          confirmButtonColor: '#0F172A'
+        });
+      });
+    } else {
+      Swal.fire('เปลี่ยนสถานะเรียบร้อย', `สันทัดสถานะสำเร็จเป็น ${newStatus}`, 'success');
+    }
   };
 
   const handleToggleRecordStatus = (recId: string) => {
@@ -973,13 +1082,116 @@ export default function App() {
   };
 
   const handleUpdateStudentStatusByStaff = (studentId: string, status: User['status']) => {
+    const targetStudent = db.users.find(u => u.id === studentId);
     const nextUsers = db.users.map(u => u.id === studentId ? { ...u, status } : u);
     updateDb({ ...db, users: nextUsers });
-    Swal.fire('สำเร็จ', 'ส่งข้อเสนอเปลี่ยนแปลงสถานะนักศึกษาเข้าสู่ระบบบริหารพิจารณาแล้ว', 'success');
+
+    // Send email notification to student
+    if (targetStudent && targetStudent.email) {
+      const emailSubject = `[AMT CONNECT] อัปเดตข้อเสนอเปลี่ยนแปลงสถานภาพนักศึกษา`;
+      const emailBody = `สวัสดีคุณ ${targetStudent.firstName} ${targetStudent.lastName},
+
+เจ้าหน้าที่แผนกอบรม (Training Staff) ได้ส่งรายชื่อข้อเสนอเปลี่ยนแปลงสถานภาพทางทะเบียนและผลการเรียนของคุณเข้าสู่ที่ประชุมคณะทำงานเพื่อพิจารณาอนุมัติเชิงบริหาร:
+- รหัสนักศึกษา: ${targetStudent.id}
+- สถานะที่เสนอ: ${status}
+
+ในระหว่างขั้นตอนนี้ สิทธิ์หรือความสามารถในการขอใช้ระบบของโรงเรียนฝึกอู่การช่างอาจมีการเปลี่ยนแปลง หรือรอการลงลายมือชื่อพินิจการปรับเปลี่ยนอย่างเป็นทางการโดยผู้บริหารการอบรมหลักสูตรต่อไป
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      Swal.fire({
+        title: 'กำลังอัปเดตและแจ้งเตือน...',
+        text: 'กรุณารอสักครู่ ระบบกำลังส่งต่อและโทรแจ้งผู้ใช้ผ่านอีเมล',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      sendEmailNotification(targetStudent.email, emailSubject, emailBody).then((emailRes) => {
+        if (emailRes.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'เสนอเปลี่ยนแปลงสถานภาพสำเร็จ!',
+            text: `ปรับปรุงข้อมูลเป็น ${status} และส่งเมลความคืบหน้าแก่นักศึกษา (${targetStudent.email}) เรียบร้อยแล้ว`,
+            confirmButtonColor: '#0F172A'
+          });
+        } else {
+          Swal.fire({
+            icon: 'warning',
+            title: 'เสนอเปลี่ยนข้อมูลสำเร็จ แต่อีเมลขัดข้อง',
+            text: `ปรับสถานะเป็น ${status} แล้ว แต่อีเมลส่งออกแจ้งผู้เรียนไม่สำเร็จ: ${emailRes.message} (โปรดตรวจสอบ API Google Apps Script)`,
+            confirmButtonColor: '#0F172A'
+          });
+        }
+      }).catch((err) => {
+        Swal.fire({
+          icon: 'warning',
+          title: 'เปลี่ยนแล้ว แต่อีเมลขัดข้อง',
+          text: `เปลี่ยนสถานะเป็น ${status} แล้ว แต่อีเมลขัดข้องขณะเชื่อมโยง: ${err.message || err}`,
+          confirmButtonColor: '#0F172A'
+        });
+      });
+    } else {
+      Swal.fire('สำเร็จ', 'ส่งข้อเสนอเปลี่ยนแปลงสถานะนักศึกษาเข้าสู่ระบบบริหารพิจารณาแล้ว', 'success');
+    }
   };
 
   const handleApproveStudentStatusByManager = (studentId: string) => {
-    Swal.fire('ผู้บริหารอนุมัติ', 'อนุมัติยืนยันสถานะนักศึกษาเข้าบอร์ดทะเบียนเรียบร้อย', 'success');
+    const student = db.users.find(u => u.id === studentId);
+
+    // Send email notification to student
+    if (student && student.email) {
+      const emailSubject = `[AMT CONNECT] ผู้บริหารได้รับการตรวจสอบและอนุมัติสถานะระดับหลักสูตร`;
+      const emailBody = `สวัสดีคุณ ${student.firstName} ${student.lastName},
+
+ผู้จัดการแผนกฝึกอบรม (Training Manager) ได้ลงนามและทำการอนุมัติสิทธิ์ พร้อมทั้งรับรองสถานะภาพทางทะเบียนการเรียนของคุณในระบบเรียบร้อยแล้ว:
+- รหัสนักศึกษา: ${student.id}
+- ชื่อ-นามสกุล: ${student.firstName} ${student.lastName}
+- สถานภาพล่าสุด: ✅ ${student.status} (ความเห็นชอบ: อนุมัติผ่านเกณฑ์สิทธิ์ความปลอดภัย)
+
+ขณะนี้ประวัติและสถานภาพของคุณได้รับการบันทึกยืนยันเป็นที่ประจักษ์ในศูนย์บริหารระบบจัดจ้างแล้ว คุณสามารถดำเนินการกิจกรรมขอสิทธิ์อื่นๆ ได้ทันทีค่ะ/ครับ
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      Swal.fire({
+        title: 'กำลังส่งเมลรับรอง...',
+        text: 'กรุณารอสักครู่ ระบบกำลังจัดส่งลายมือพิจารณาผ่านเมล',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      sendEmailNotification(student.email, emailSubject, emailBody).then((emailRes) => {
+        if (emailRes.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'อนุมัติและส่งเมลเรียบร้อย!',
+            text: `อนุมัติยืนยันสถานะนักศึกษาเข้าบอร์ดทะเบียน และส่งเมลอนุมัติการรับรองไปยังนักเรียน (${student.email}) สำเร็จเรียบร้อย`,
+            confirmButtonColor: '#0F172A'
+          });
+        } else {
+          Swal.fire({
+            icon: 'warning',
+            title: 'อนุมัติสิทธิ์แล้ว แต่อีเมลขัดข้อง',
+            text: `ระบบอนุมัติสำเร็จ แต่อีเมลแจ้งนักเรียนขัดข้อง: ${emailRes.message} (โปรดเช็ค URL Google Script API ของศูนย์)`,
+            confirmButtonColor: '#0F172A'
+          });
+        }
+      }).catch((err) => {
+        Swal.fire({
+          icon: 'warning',
+          title: 'อนุมัติสำเร็จ แต่ติดต่อส่งเมลขัดข้อง',
+          text: `สันทัดการยืนยันเข้าบอร์ดเรียบร้อย แต่อีเมลขัดข้อง: ${err.message || err}`,
+          confirmButtonColor: '#0F172A'
+        });
+      });
+    } else {
+      Swal.fire('ผู้บริหารอนุมัติ', 'อนุมัติยืนยันสถานะนักศึกษาเข้าบอร์ดทะเบียนเรียบร้อย', 'success');
+    }
   };
 
   // --- ACTIONS FOR MAINTENANCE ---
