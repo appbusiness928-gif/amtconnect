@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ClassSchedule, ExamSchedule, ExamGrade } from '../types';
 import { Calendar } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 interface AcademicDataSectionProps {
   classSchedules: ClassSchedule[];
@@ -51,6 +52,28 @@ export default function AcademicDataSection({ classSchedules, examSchedules, exa
   const handlePrevMonth = () => setCurrentCalendarDate(new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1));
   const handleNextMonth = () => setCurrentCalendarDate(new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1));
 
+  const handleShowScheduleDetails = (cs: ClassSchedule, date: Date) => {
+    const dStr = `${date.getDate()} ${THAI_MONTH_NAMES[date.getMonth()]} ${date.getFullYear() + 543}`;
+    const sTime = cs.startTime || '08:30';
+    const eTime = cs.endTime || '16:30';
+    Swal.fire({
+      title: `<span class="text-[10px] font-sans font-extrabold uppercase text-neutral-450 block tracking-widest mb-1">รายละเอียดชั่วโมงวิชาเรียน</span> <span class="font-sans font-black text-sm text-neutral-950">${cs.subjectCode}</span>`,
+      html: `
+        <div class="text-left font-sans text-xs space-y-2.5 py-2 mt-2 border-t border-dashed border-neutral-200">
+          <p class="font-bold text-neutral-950">ชื่อวิชาเรียน: <span class="font-medium text-neutral-700">${cs.subjectName}</span></p>
+          <p class="font-bold text-neutral-950">วันที่มีเรียนตามสัปดาห์: <span class="font-medium text-neutral-700">วัน${cs.dayOfWeek} (ที่ ${dStr})</span></p>
+          <p class="font-bold text-neutral-950">กำหนดเวลาเรียนสอน: <span class="font-bold text-emerald-700 font-mono">${sTime} - ${eTime} น.</span></p>
+          <p class="font-bold text-neutral-950">เวลาพักเบรกกลางวัน: <span class="font-bold text-yellow-800 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-250 font-mono">12:30 น. (พักเบรกเที่ยง)</span></p>
+          <p class="font-bold text-neutral-950 font-mono">กลุ่มเป้ารุ่นผู้เรียน: <span class="font-medium text-neutral-700">รุ่นนักศึกษา ${cs.batch}</span></p>
+          <p class="font-bold text-neutral-950">ช่วงวันตลอดหลักสูตร: <span class="font-medium text-neutral-700">${cs.startDate} ถึง ${cs.endDate}</span></p>
+          <p class="font-bold text-neutral-950">อาจารย์ผู้รับผิดชอบชี้สอน: <span class="font-medium text-neutral-700">${cs.instructorName}</span></p>
+        </div>
+      `,
+      confirmButtonText: 'รับทราบเวลาตารางเรียน',
+      confirmButtonColor: '#171717',
+    });
+  };
+
   return (
     <div className="space-y-6">
       <h3 className="font-sans font-black text-lg text-neutral-950">ข้อมูลการเรียนประจำรุ่น {studentBatch}</h3>
@@ -88,9 +111,18 @@ export default function AcademicDataSection({ classSchedules, examSchedules, exa
                   <div className="font-bold mb-1">{cellDate.getDate()}</div>
                   <div className="flex flex-col gap-0.5">
                     {classesToday.map(cs => (
-                      <div key={cs.id} className="bg-neutral-900 text-white rounded px-1 truncate" title={cs.subjectName}>
-                        {cs.subjectCode}
-                      </div>
+                      <button
+                        key={cs.id}
+                        type="button"
+                        onClick={() => handleShowScheduleDetails(cs, cellDate)}
+                        className="w-full text-left bg-neutral-900 text-white rounded px-1.5 py-0.5 font-sans truncate hover:bg-neutral-800 transition-colors cursor-pointer block text-[8px] border-none"
+                        title={`${cs.subjectCode} - ${cs.subjectName}`}
+                      >
+                        <span className="font-extrabold">{cs.subjectCode}</span>
+                        <span className="block text-[7px] text-zinc-300 font-mono leading-none mt-0.5">
+                          {cs.startTime || '08:30'}-{cs.endTime || '16:30'}
+                        </span>
+                      </button>
                     ))}
                   </div>
                 </div>

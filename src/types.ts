@@ -103,6 +103,8 @@ export interface ClassSchedule {
   startDate: string;
   endDate: string;
   instructorName: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface ExamSchedule {

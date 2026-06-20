@@ -248,10 +248,6 @@ export default function RegistrationForms({ onRegisterSuccess, onCancel, existin
                 className="w-full border border-neutral-300 pl-8 pr-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs font-mono"
               />
             </div>
-            <p className="text-[10px] text-zinc-500 mt-1 pl-1 leading-normal">
-              * ข้อมูลอีเมลจะถูกใช้ส่งแจ้งเตือนการลงทะเบียน ใบรับรอง และสิทธิ์ต่างๆ 
-              (ผู้ใช้สามารถเปลี่ยนลิงก์ Google Apps Script ของตนเองในหน้าแอดมิน เพื่อความเสถียรและโควตาอีเมลที่เป็นส่วนตัว 100%)
-            </p>
           </div>
           <div>
             <label className="block text-[11px] font-bold text-neutral-700 mb-1">รหัสผ่านสำหรับล็อกอินเข้าใช้ระบบ *</label>

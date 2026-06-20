@@ -888,6 +888,7 @@ export default function TrainingManagerPanel({
                           <th className="py-2 px-3">วัน</th>
                           <th className="py-2 px-3">รหัสวิชา</th>
                           <th className="py-2 px-3">ชื่อหลักสูตรวิชา</th>
+                          <th className="py-2 px-3">เวลาเรียน</th>
                           <th className="py-2 px-3">ช่วงวันที่เรียน</th>
                           <th className="py-2 px-3">ครูผู้สอน</th>
                         </tr>
@@ -898,13 +899,17 @@ export default function TrainingManagerPanel({
                             <td className="py-2 px-3 font-bold text-neutral-950 font-sans">{schedule.dayOfWeek}</td>
                             <td className="py-2 px-3 font-mono text-neutral-600">{schedule.subjectCode}</td>
                             <td className="py-2 px-3 font-semibold text-neutral-800">{schedule.subjectName}</td>
+                            <td className="py-2 px-3 font-semibold text-emerald-800">
+                              {schedule.startTime || '08:30'} - {schedule.endTime || '16:30'} น.
+                              <span className="block text-[9px] text-amber-700 font-normal">พักเที่ยง 12:30 น.</span>
+                            </td>
                             <td className="py-2 px-3 font-mono">{schedule.startDate} ถึง {schedule.endDate}</td>
                             <td className="py-2 px-3 font-sans">{schedule.instructorName}</td>
                           </tr>
                         ))}
                         {studentSchedules.length === 0 && (
                           <tr>
-                            <td colSpan={5} className="py-8 text-center text-neutral-450 italic">
+                            <td colSpan={6} className="py-8 text-center text-neutral-450 italic">
                               ไม่มีวิชาเรียนลงทะเบียนสำหรับรุ่นนักศึกษารายนี้
                             </td>
                           </tr>

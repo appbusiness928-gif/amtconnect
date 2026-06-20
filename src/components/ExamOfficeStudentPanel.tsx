@@ -126,12 +126,16 @@ export default function ExamOfficeStudentPanel({
 
   const handleShowScheduleDetails = (cs: ClassSchedule, date: Date) => {
     const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const sTime = cs.startTime || '08:30';
+    const eTime = cs.endTime || '16:30';
     Swal.fire({
       title: `<span class="text-[10px] font-sans font-extrabold uppercase text-neutral-400 block tracking-widest mb-1">รายละเอียดชั่วโมงวิชาเรียน</span> <span class="font-sans font-black text-sm text-neutral-950">${cs.subjectCode}</span>`,
       html: `
         <div class="text-left font-sans text-xs space-y-2 py-2 mt-2 border-t border-dashed border-neutral-200">
           <p class="font-bold text-neutral-950">ชื่อวิชาเรียน: <span class="font-medium text-neutral-700">${cs.subjectName}</span></p>
           <p class="font-bold text-neutral-950">วันสอนหลักประจำสัปดาห์: <span class="font-medium text-neutral-700">วัน${cs.dayOfWeek}</span></p>
+          <p class="font-bold text-neutral-950">เวลาเรียนทั้งหมด: <span class="font-bold text-emerald-750 font-mono">${sTime} - ${eTime} น.</span></p>
+          <p class="font-bold text-neutral-950">ช่วงเวลาพักเที่ยง: <span class="font-bold text-yellow-800 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">12:30 น. (พักเบรกกลางวัน)</span></p>
           <p class="font-bold text-neutral-950 font-mono">กลุ่มเป้าหมายผู้สอน: <span class="font-medium text-neutral-700">รุ่นนักศึกษา ${cs.batch}</span></p>
           <p class="font-bold text-neutral-950">ช่วงกำหนดจัดเรียนสอน: <span class="font-medium text-neutral-700">${cs.startDate} ถึง ${cs.endDate}</span></p>
           <p class="font-bold text-neutral-950">อาจารย์ผู้รับผิดชอบชี้สอน: <span class="font-medium text-neutral-700">${cs.instructorName}</span></p>
@@ -185,6 +189,8 @@ export default function ExamOfficeStudentPanel({
   const [schDays, setSchDays] = useState<('จันทร์' | 'อังคาร' | 'พุธ' | 'พฤหัส' | 'ศุกร์' | 'เสาร์' | 'อาทิตย์')[]>(['จันทร์']);
   const [schStart, setSchStart] = useState('');
   const [schEnd, setSchEnd] = useState('');
+  const [schStartTime, setSchStartTime] = useState('08:30');
+  const [schEndTime, setSchEndTime] = useState('16:30');
   const [schTeacher, setSchTeacher] = useState('');
 
   // Auto-populate instructor name for teaching schedules if they are the instructor
@@ -553,18 +559,20 @@ export default function ExamOfficeStudentPanel({
       return;
     }
 
-    schDays.forEach((day, index) => {
-      onAddSchedule({
-        id: `SCH-${Date.now()}-${index}`,
-        batch: schBatch,
-        subjectCode: schCode,
-        subjectName: schName,
-        dayOfWeek: day,
-        startDate: schStart,
-        endDate: schEnd,
-        instructorName: schTeacher,
-      });
-    });
+    const schedulesToSubmit = schDays.map((day, index) => ({
+      id: `SCH-${Date.now()}-${index}`,
+      batch: schBatch,
+      subjectCode: schCode,
+      subjectName: schName,
+      dayOfWeek: day,
+      startDate: schStart,
+      endDate: schEnd,
+      instructorName: schTeacher,
+      startTime: schStartTime || '08:30',
+      endTime: schEndTime || '16:30',
+    }));
+
+    onAddSchedule(schedulesToSubmit);
 
     setSchCode('');
     setSchName('');
@@ -1121,6 +1129,36 @@ export default function ExamOfficeStudentPanel({
                       className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-neutral-50 p-3 rounded-lg border border-neutral-200">
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาเข้าเรียน (เริ่มเรียน) *</label>
+                    <input
+                      id="optSchStartTimeInput"
+                      type="time"
+                      required
+                      value={schStartTime}
+                      onChange={(e) => setSchStartTime(e.target.value)}
+                      className="w-full border border-neutral-300 px-3 py-1.5 rounded bg-white focus:outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาเลิกเรียน (สิ้นสุดเรียน) *</label>
+                    <input
+                      id="optSchEndTimeInput"
+                      type="time"
+                      required
+                      value={schEndTime}
+                      onChange={(e) => setSchEndTime(e.target.value)}
+                      className="w-full border border-neutral-300 px-3 py-1.5 rounded bg-white focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-zinc-650 font-sans pl-1 flex items-center gap-2">
+                  <span className="inline-block px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 font-bold border border-yellow-250 text-center text-[10px]">พักเที่ยง 12:30 น.</span>
+                  <span>ข้อมูลวิชาจะบันทึกพร้อมกาเวลาพักเรียนภาคเบรกเที่ยง <strong>(12:30 น.)</strong> ภายในระบบตารางเรียนอย่างเป็นทางการ</span>
                 </div>
 
                 <div className="flex justify-end pt-2 border-t">
