@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, RoomRequest, RoomUsageRecord, Equipment, BorrowRecord, ClassSchedule, ExamSchedule, ExamGrade } from './types';
-import { APIService, getAppOriginForQR, pullFromGoogleSheets, syncWithGoogleSheets } from './lib/api';
+import { APIService, getAppOriginForQR, pullFromGoogleSheets, syncWithGoogleSheets, sendEmailNotification } from './lib/api';
 import RegistrationForms from './components/RegistrationForms';
 import AdminPanel from './components/AdminPanel';
 import TrainingManagerPanel from './components/TrainingManagerPanel';
@@ -675,9 +675,27 @@ export default function App() {
       Swal.fire({
         icon: 'success',
         title: 'ยื่นใบลงทะเบียนสำเร็จ',
-        text: 'ข้อมูลใบสมัครและลายเซ็นของท่านได้รับการบันทึกบนอุปกรณ์นี้แล้ว และกำลังซิงค์ขึ้นระบบ Google Sheets ในพื้นหลังเฉกเช่นคลาเวย์ โปรดรอผู้ประสานงาน/แอดมินวิทยาลัยตรวจสอบและคำนุมัติสิทธิ์เข้าใช้',
+        text: 'ข้อมูลใบสมัครและลายเซ็นของท่านได้รับการบันทึกบนอุปกรณ์นี้แล้ว และกำลังซิงค์ขึ้นระบบ Google Sheets ในพื้นหลังเฉกเช่นคลาเวย์ โปรดรอผู้ประสานงาน/แอดมินวิทยาลัยตรวจสอบและอนุมัติสิทธิ์เข้าใช้',
         confirmButtonColor: '#0F172A'
       });
+
+      // Send email notification to registered user
+      if (candidate.email) {
+        const emailSubject = `[AMT CONNECT] ยืนยันการลงทะเบียนขอสิทธิ์เข้าใช้งานระบบ`;
+        const emailBody = `สวัสดีคุณ ${candidate.firstName} ${candidate.lastName},
+
+ขอบคุณสำหรับการลงทะเบียนเข้าใช้งานระบบ AMT CONNECT (ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน)
+ข้อมูลการสมัครสถานภาพ (${candidate.role}) ของท่านได้รับการอัปโหลดเข้าสู่คิวระบบเรียบร้อยแล้ว สำเร็จ ณ วันที่ ${new Date().toLocaleDateString('th-TH')}
+
+โปรดรอทางแอดมินหรือผู้บริหารการช่างพิจารณาตรวจสอบข้อมูลและลายเซ็นดิจิทัล เพื่ออนุมัติเปิดสิทธิ์การเข้าใช้ระบบในขั้นตอนต่อไป
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+        
+        sendEmailNotification(candidate.email, emailSubject, emailBody).catch((err) => {
+          console.warn('Silent registration email failure:', err);
+        });
+      }
 
       // Synchronize in the background immediately
       syncWithGoogleSheets(currentDb).catch((err) => {
@@ -908,6 +926,30 @@ export default function App() {
     };
     const nextReqs = [...db.roomRequests, freshRequest];
     updateDb({ ...db, roomRequests: nextReqs });
+
+    // Find requester email from db.users and send notification
+    const requesterUser = db.users.find(u => u.id === newRequest.requesterId);
+    if (requesterUser && requesterUser.email) {
+      const emailSubject = `[AMT CONNECT] ยืนยันการยื่นคำร้องขอใช้ห้องปฏิบัติการ (${newRequest.room})`;
+      const emailBody = `สวัสดีคุณ ${newRequest.requesterName},
+
+คำร้องขอใช้ห้องปฏิบัติการของท่านได้รับการลงระบบเรียบร้อยแล้ว:
+- หมายเลขคำขอ: ${freshRequest.id}
+- ห้องปฏิบัติการ: ${newRequest.room}
+- วันที่เข้าใช้งานที่ขอ: ${newRequest.date}
+- ช่วงเวลา: ${newRequest.timeRange}
+- วัตถุประสงค์: ${newRequest.purpose}
+
+ขณะนี้คำขออยู่ระหว่างการพิจารณาตรวจสอบสิทธิ์และความพร้อมใช้งานของคลังโรงผลิต/ผู้ดูแลระบบซ่อมบำรุง
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      sendEmailNotification(requesterUser.email, emailSubject, emailBody).catch((err) => {
+        console.warn('Silent room request email notification failure:', err);
+      });
+    }
+
     return true;
   };
 
@@ -980,6 +1022,32 @@ export default function App() {
       roomRequests: nextRequests,
       roomUsageRecords: nextUsageRecords
     });
+
+    // Find requester email from db.users and send approval/rejection notification
+    const requesterUser = db.users.find(u => u.id === reqObj.requesterId);
+    if (requesterUser && requesterUser.email) {
+      const isApproved = status === 'Approved';
+      const emailSubject = `[AMT CONNECT] แจ้งผลการพิจารณาคำร้องขอใช้ห้องปฏิบัติการ (${reqObj.room})`;
+      const emailBody = `สวัสดีคุณ ${reqObj.requesterName},
+
+คำร้องขอใช้ห้องปฏิบัติการของท่านได้รับการพิจารณาเรียบร้อยแล้ว:
+- หมายเลขคำขอ: ${reqObj.id}
+- ห้องปฏิบัติการ: ${reqObj.room}
+- วันที่เข้าใช้งาน: ${reqObj.date}
+- ช่วงเวลา: ${reqObj.timeRange}
+- ผลการพิจารณา: ${isApproved ? '✅ อนุมัติการเข้าใช้ห้อง' : '❌ ปฏิเสธคำร้องขอ'}
+- เจ้าหน้าที่ผู้พิจารณา: ${officerName}
+- หมายเหตุเพิ่มเติม: ${note || '-'}
+
+${isApproved ? 'กรุณาตรวจสอบและปฏิบัติตามมาตรการช่างอย่างเคร่งครัด รวมถึงทำบันทึกประวัติการใช้ห้องปฏิบัติการ (TLTC-MO-034) หลังใช้งานเรียบร้อยด้วยค่ะ/ครับ' : 'ท่านสามารถเข้าสู่ระบบและปรับแก้รายละเอียดที่เหมาะสม เพื่อยื่นคำขอลมปราณใหม่อีกครั้งได้'}
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      sendEmailNotification(requesterUser.email, emailSubject, emailBody).catch((err) => {
+        console.warn('Silent room certification email failure:', err);
+      });
+    }
   };
 
   const handleAddEquipment = (newTool: Equipment) => {
@@ -1070,6 +1138,32 @@ export default function App() {
   const handleAddGrade = (grade: ExamGrade) => {
     const nextGr = [...db.examGrades, grade];
     updateDb({ ...db, examGrades: nextGr });
+
+    // Send email notification to each student listed in grades
+    if (grade.grades && Array.isArray(grade.grades)) {
+      grade.grades.forEach((item) => {
+        const studentUser = db.users.find(u => u.id === item.studentId);
+        if (studentUser && studentUser.email) {
+          const emailSubject = `[AMT CONNECT] ประกาศรายงานผลคะแนนสอบวิชาสอบ ${grade.subjectName}`;
+          const emailBody = `สวัสดีคุณ ${item.studentName},
+
+สำนักงานหลักสูตรและการสอบอู่การช่างอากาศยานร่วมผลิตได้ประกาศรายงานผลคะแนนและผลฝึกฝนในกลุ่มวิชาเรียนอย่างเป็นทางการแล้ว:
+- รายวิชาเรียน: ${grade.subjectName}
+- สอบปฏิบัติครั้งที่: ${grade.round}
+- รุ่นนักศึกษา: ชั้นรุ่นที่ ${grade.batch}
+- คะแนนสอบที่ได้: ${item.score} คะแนน
+
+คุณสามารถลงลายมือชื่อเข้าใช้งานบนเว็บไซต์ขบวนการเพื่อตรวจสอบตารางคะแนนสะสม และสมรรถนะการช่างภาพขยายของบอร์ดฝึกปฏิบัติการ ได้ทันทีในหน้านักเรียน/นักศึกษา
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+          sendEmailNotification(studentUser.email, emailSubject, emailBody).catch((err) => {
+            console.warn(`Silent exam result email failure for student ${item.studentId}:`, err);
+          });
+        }
+      });
+    }
   };
 
   const handleRecordUsageFromDoc = (requestId: string, reportText: string, customRoom?: string, signature?: string) => {
@@ -1092,6 +1186,29 @@ export default function App() {
       roomUsageRecords: [...db.roomUsageRecords, freshRecord]
     });
 
+    // Find requester email in db.users to notify
+    const requesterUser = db.users.find(u => `${u.firstName} ${u.lastName}`.trim().toLowerCase() === reqObj.requesterName.trim().toLowerCase());
+    if (requesterUser && requesterUser.email) {
+      const emailSubject = `[AMT CONNECT] บันทึกการเข้าใช้งานห้องปฏิบัติการเรียบร้อยแล้ว (${freshRecord.room})`;
+      const emailBody = `สวัสดีคุณ ${freshRecord.requesterName},
+
+ข้อมูลบันทึกข้อเสนอแนะสำหรับการปฏิบัติงานของท่านได้รับการบันทึกเข้าระบบแล้ว:
+- หมายเลขบันทึก: ${freshRecord.id}
+- ห้องปฏิบัติการ: ${freshRecord.room}
+- วันที่เข้าใช้งาน: ${freshRecord.date}
+- สิ่งที่รายงานเสนอพิจารณาเพิ่ม/ปรับปรุง: ${freshRecord.report}
+- สถานะระบบดูแลรักษาซ่อมบำรุง: รอการรับทราบ (Pending)
+
+ข้อมูลนี้จะถูกส่งต่อไปยังเจ้าหน้าที่ผู้ควบคุมเครื่องมือแผนกซ่อมบำรุงเพื่อพิจารณาพัฒนาสภาพแวดล้อมต่อไปค่ะ/ครับ
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      sendEmailNotification(requesterUser.email, emailSubject, emailBody).catch((err) => {
+        console.warn('Silent room record email notification failure:', err);
+      });
+    }
+
     Swal.fire({
       icon: 'success',
       title: 'บันทึกรายงานสำเร็จ',
@@ -1113,6 +1230,29 @@ export default function App() {
       ...db,
       roomUsageRecords: [...db.roomUsageRecords, freshRecord]
     });
+
+    // Find requester email in db.users to notify
+    const requesterUser = db.users.find(u => `${u.firstName} ${u.lastName}`.trim().toLowerCase() === record.requesterName.trim().toLowerCase());
+    if (requesterUser && requesterUser.email) {
+      const emailSubject = `[AMT CONNECT] ยืนยันการบันทึกประวัติการใช้งานห้องปฏิบัติการ (${freshRecord.room})`;
+      const emailBody = `สวัสดีคุณ ${freshRecord.requesterName},
+
+ข้อมูลบันทึกประวัติการใช้งานห้องปฏิบัติการ (แบบฟอร์ม TLTC-MO-034) ของท่านได้รับการบันทึกเรียบร้อยแล้ว:
+- หมายเลขบันทึก: ${freshRecord.id}
+- ห้องปฏิบัติการ: ${freshRecord.room}
+- วันที่บันทึกข้อมูล: ${freshRecord.date}
+- สิ่งที่ต้องการให้พัฒนาหรือซ่อมบำรุงเพิ่มเติม: ${freshRecord.report || '-'}
+- สถานะใบรายงาน: รอผู้ควบคุมยอมรับทราบ (Pending)
+
+ขบวนการส่งมอบข้อมูลและรายงานสภาพห้องปฏิบัติการเสร็จสมบูรณ์ ระบบได้ป้อนสิ่งจดบันทึกให้แก่ฝ่ายผู้รับซ่อมบำรุงเข้าตรวจสอบเรียบร้อยแล้ว
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      sendEmailNotification(requesterUser.email, emailSubject, emailBody).catch((err) => {
+        console.warn('Silent room record email notification failure:', err);
+      });
+    }
 
     Swal.fire({
       icon: 'success',

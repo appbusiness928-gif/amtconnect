@@ -493,3 +493,36 @@ export async function uploadToGoogleDrive(fileName: string, htmlContent: string)
     };
   }
 }
+
+export async function sendEmailNotification(recipient: string, subject: string, body: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const url = getGoogleScriptUrl();
+    const payload = JSON.stringify({
+      action: 'sendEmail',
+      recipient,
+      subject,
+      body,
+    });
+    
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: payload,
+    });
+    
+    return {
+      success: true,
+      message: `ส่งอีเมลแจ้งเตือนไปยัง ${recipient} สำเร็จ`,
+    };
+  } catch (err: any) {
+    console.error('Failed to send email notification:', err);
+    return {
+      success: false,
+      message: err.message || 'ไม่สามารถส่งข้อความอีเมลได้',
+    };
+  }
+}
+

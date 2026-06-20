@@ -152,6 +152,21 @@ function doPost(e) {
         message: "บันทึกไฟล์ PDF " + fileName + " ลง Google Drive สำเร็จ!", 
         fileUrl: file.getUrl() 
       };
+    } else if (payload.action === "sendEmail") {
+      const recipient = payload.recipient;
+      const subject = payload.subject;
+      const body = payload.body;
+      
+      if (!recipient || !subject || !body) {
+        throw new Error("Missing recipient, subject, or body parameter");
+      }
+      
+      // ส่งอีเมลโดยใช้ MailApp.sendEmail (รองรับการส่งเมลจากบัญชีผู้เปิดบัญชีตัวกูเกิลแอปสคริปต์นี้)
+      MailApp.sendEmail(recipient, subject, body);
+      responseData = {
+        success: true,
+        message: "ส่งอีเมลแจ้งเตือนไปยัง " + recipient + " เรียบร้อยแล้ว!"
+      };
     } else {
       responseData = { success: false, message: "Invalid action or payload" };
     }
