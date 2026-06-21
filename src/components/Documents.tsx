@@ -798,6 +798,43 @@ function formatThaiDate(dateStr: string): string {
   return dateStr;
 }
 
+// Helper to convert Date String into classic signature Thai date string (e.g. 21 / มิ.ย. / 2569)
+function formatSignatureThaiDate(dateStr: string): string {
+  if (!dateStr) return '....... / ....... / .......';
+  
+  let day = NaN;
+  let month = NaN;
+  let year = NaN;
+
+  if (dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      day = parseInt(parts[2], 10);
+    }
+  } else if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      day = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      year = parseInt(parts[2], 10);
+    }
+  }
+
+  const thaiMonthsShort = [
+    'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+  ];
+
+  if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+    const fullYear = year < 2400 ? year + 543 : year;
+    const monthName = month >= 1 && month <= 12 ? thaiMonthsShort[month - 1] : '...';
+    return `${day}  /  ${monthName}  /  ${fullYear}`;
+  }
+  return '....... / ....... / .......';
+}
+
 export function getMaintenanceManagerInfo() {
   try {
     const db = APIService.getDb();
@@ -1029,7 +1066,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                     <ThalangLogo className="w-14 h-14 mx-auto" />
                   </td>
                   <td className="border border-black p-2 w-[58%] text-center align-middle font-sans font-bold text-[11px] uppercase tracking-wide">
-                    TLTC AIRCRAFT MAINTENANCE TRAINING ORGANIZATION
+                    TLTC AIRCRAFT MAINTENANCE<br/>TRAINING ORGANIZATION
                   </td>
                   <td className="border border-black p-2 w-[30%] text-center align-middle font-sans font-semibold text-[11px]">
                     Maintenance Office
@@ -1230,14 +1267,14 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                 </div>
 
                 <div className="flex items-baseline w-full justify-center gap-1 pt-1.5 font-mono text-[11px] text-blue-850 font-bold">
-                  {formatThaiDate(request.date)}
+                  {formatSignatureThaiDate(request.date)}
                 </div>
               </div>
             </div>
 
             {/* Readiness Opinion Box modeled on Photo 1 bottom region */}
             <div className="border border-black p-4 space-y-3 my-5 text-black font-sans text-xs bg-neutral-50/20">
-              <h4 className="font-bold underline">ความคิดเห็นผู้ตรวจสอบความพร้อมของห้อง</h4>
+              <h4 className="font-bold">ความคิดเห็นผู้ตรวจสอบความพร้อมของห้อง</h4>
               
               <div className="space-y-3 pl-3">
                 <div className="flex items-center">
@@ -1291,7 +1328,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                   <div className="flex items-baseline w-full justify-center">
                     <span>( </span>
                     <span className="flex-1 text-blue-850 font-bold px-1 font-serif text-[13.5px] italic">
-                      {request.maintenanceOfficerName || (managerInfo ? managerInfo.fullName : '')}
+                      {request.maintenanceApproved === 'Approved' ? (request.maintenanceOfficerName || (managerInfo ? managerInfo.fullName : '')) : ''}
                     </span>
                     <span> )</span>
                   </div>
@@ -1301,7 +1338,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                   </div>
 
                   <div className="flex items-baseline w-full justify-center gap-1 pt-1.5 font-mono text-[11px] text-blue-850 font-bold">
-                    {request.maintenanceApproved === 'Approved' ? formatThaiDate(request.date) : '....... / ....... / .......'}
+                    {request.maintenanceApproved === 'Approved' ? formatSignatureThaiDate(request.date) : '....... / ....... / .......'}
                   </div>
                 </div>
               </div>
@@ -1309,8 +1346,8 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
 
             {/* Document Footer */}
             <div className="flex justify-between items-center text-[10px] text-neutral-500 font-sans mt-6 pt-2 border-t border-neutral-300 select-none">
-              <span>Effective date {formatEffectiveDate(request.maintenanceCertifiedDate)}, Rev.00</span>
-              <span className="font-semibold">Page 1 of 1</span>
+              <span className="italic">Effective date 23/04/2025, Rev.00</span>
+              <span className="font-bold italic">Page 1 of 1</span>
             </div>
           </div>
         </div>
@@ -1436,7 +1473,7 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                     <ThalangLogo className="w-14 h-14 mx-auto" />
                   </td>
                   <td className="border border-black p-2 w-[65%] text-center align-middle font-sans font-bold text-[11px] uppercase tracking-wide">
-                    TLTC AIRCRAFT MAINTENANCE TRAINING ORGANIZATION
+                    TLTC AIRCRAFT MAINTENANCE<br/>TRAINING ORGANIZATION
                   </td>
                   <td className="border border-black p-1 w-[25%] text-center align-middle font-sans font-semibold text-[10.5px]">
                     Maintenance Office
@@ -1456,12 +1493,13 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
             {/* List Table print layout modeled closely on Photo 2 */}
             <table className="w-full border-collapse border border-neutral-950 text-center font-sans mt-2">
               <thead>
-                <tr className="bg-neutral-100/50 font-bold text-[11px] text-black">
-                  <th className="border border-neutral-950 p-2.5 w-[11%]">ว/ด/ป</th>
-                  <th className="border border-neutral-950 p-2.5 w-[16%]">ห้อง</th>
-                  <th className="border border-neutral-950 p-2.5 w-[18%]">ผู้เข้าใช้ห้อง</th>
-                  <th className="border border-neutral-950 p-2.5 w-[37%] text-left pl-4">รายงานการใช้ห้อง (สิ่งที่ต้องการให้พัฒนา)</th>
-                  <th className="border border-neutral-950 p-2.5 w-[18%]">Maintenance Officer (ผู้ตรวจรับ)</th>
+                <tr className="bg-neutral-100/50 font-sans font-bold text-[11px] text-black">
+                  <th className="border border-neutral-950 p-2 w-[10%]">ว/ด/ป</th>
+                  <th className="border border-neutral-950 p-2 w-[15%]">ห้อง</th>
+                  <th className="border border-neutral-950 p-2 w-[18%]">ผู้เข้าใช้ห้อง</th>
+                  <th className="border border-neutral-950 p-2 w-[32%] text-center">รายงานการใช้ห้อง<br/><span className="text-[10px] font-normal">(สิ่งที่ต้องการให้พัฒนา)</span></th>
+                  <th className="border border-neutral-950 p-1.5 w-[13%]">Maintenance<br/>Officer</th>
+                  <th className="border border-neutral-950 p-2 w-[12%]">หมายเหตุ</th>
                 </tr>
               </thead>
               <tbody>
@@ -1470,16 +1508,16 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                   return (
                     <tr key={rec.id} className="text-[11px] h-12">
                       {/* Date */}
-                      <td className="border border-neutral-950 p-2.5 font-bold text-blue-800 font-serif text-[12px] italic select-none">
+                      <td className="border border-neutral-950 p-2 font-bold text-blue-850 font-serif text-[12px] italic select-none">
                         {formattedDate}
                       </td>
                       {/* Room */}
-                      <td className="border border-neutral-950 p-2.5 font-semibold text-blue-800 font-sans select-none">
+                      <td className="border border-neutral-950 p-2 font-semibold text-blue-850 font-sans select-none">
                         {rec.room}
                       </td>
                       {/* Requester Signature & typed name inside parentheses */}
                       <td className="border border-neutral-950 p-1">
-                        <div className="flex flex-col items-center justify-center leading-none text-blue-800">
+                        <div className="flex flex-col items-center justify-center leading-none text-blue-850">
                           {rec.requesterSignature ? (
                             <img 
                               src={rec.requesterSignature} 
@@ -1489,27 +1527,27 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                             />
                           ) : (
                             <span className="font-serif italic font-black text-[13.5px] -rotate-2 select-none">
-                              {rec.requesterName ? rec.requesterName.split(' ')[0] : 'ไซฮัน'}
+                              {rec.requesterName ? rec.requesterName.split(' ')[0] : ''}
                             </span>
                           )}
                           <span className="text-[8.5px] text-neutral-500 mt-1.5 pb-0.5">
-                            ({rec.requesterName || 'นายไซฮัน ซาราบรรณ'})
+                            ({rec.requesterName || ''})
                           </span>
                         </div>
                       </td>
                       {/* Report / Feedback */}
-                      <td className="border border-neutral-950 p-2.5 text-left pl-4 text-blue-800 font-serif text-[12.5px] italic font-semibold select-none">
-                        {rec.report || 'ปฏิบัติงานเรียบร้อย ทำความสะอาดห้องเรียนสมบูรณ์หลังใช้บริการ'}
+                      <td className="border border-neutral-950 p-2 text-left pl-3 text-blue-850 font-serif text-[12.5px] italic font-semibold select-none">
+                        {rec.report || ''}
                       </td>
                       {/* Maintenance Officer Signature status */}
-                      <td className="border border-neutral-950 p-2.5">
+                      <td className="border border-neutral-950 p-2">
                         {managerInfo ? (
-                          <div className="flex flex-col items-center justify-center leading-none text-blue-800 select-none">
-                            <span className="font-serif italic font-black text-[14px] -rotate-3 text-blue-800 scale-105 tracking-wider">
+                          <div className="flex flex-col items-center justify-center leading-none text-blue-850 select-none">
+                            <span className="font-serif italic font-black text-[13.5px] -rotate-3 text-blue-850 scale-105 tracking-wider">
                               {managerInfo.shortName}
                             </span>
-                            <span className="text-[8.5px] text-neutral-500 mt-1 pb-0.5">
-                              (M.O. ตรวจทานเรียบร้อย)
+                            <span className="text-[8px] text-neutral-500 mt-1 pb-0.5">
+                              (M.O. Approved)
                             </span>
                           </div>
                         ) : (
@@ -1518,45 +1556,31 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                           </div>
                         )}
                       </td>
+                      {/* Note column */}
+                      <td className="border border-neutral-950 p-2 text-center text-blue-850">
+                        {rec.remarks || ''}
+                      </td>
                     </tr>
                   );
                 })}
-                {/* Pad empty lines to look like empty rows in notebook if records are few */}
-                {Array.from({ length: Math.max(0, 8 - records.length) }).map((_, i) => (
-                  <tr key={`empty-${i}`} className="text-[11px] h-12">
-                    <td className="border border-neutral-950 p-2.5 font-mono text-neutral-300">/......../......../</td>
-                    <td className="border border-neutral-950 p-2.5 text-neutral-300">........................</td>
-                    <td className="border border-neutral-950 p-2.5 text-neutral-300">........................</td>
-                    <td className="border border-neutral-950 p-2.5 text-left pl-4 text-neutral-300">................................................................................................................</td>
-                    <td className="border border-neutral-950 p-2.5 text-neutral-300">........................</td>
+                {/* Pad empty lines to look like empty rows in notebook if records are few (up to 16 rows total) */}
+                {Array.from({ length: Math.max(0, 16 - records.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="text-[11px] h-[34px]">
+                    <td className="border border-neutral-950 p-2"></td>
+                    <td className="border border-neutral-950 p-2"></td>
+                    <td className="border border-neutral-950 p-2"></td>
+                    <td className="border border-neutral-950 p-2"></td>
+                    <td className="border border-neutral-950 p-2"></td>
+                    <td className="border border-neutral-950 p-2"></td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            {/* Verification End block matching Photo 2 hand-written checklist styles */}
-            <div className="mt-10 flex justify-between items-start">
-              <div className="text-[9.5px] text-neutral-500 max-w-[500px]">
-                <span className="font-semibold block">คำชี้แนะการกรอกสมุดบันทึก:</span>
-                <p>1. กรอกรายละเอียดทันทีหลังจากปฏิบัติงานเสร็จสิ้นในแต่ละช่วงวัน / คาบปฏิบัติการ</p>
-                <p>2. แจ้งเบาะแสหรือข้อบกพร่องแอร์, ระบบกำลังไฟฟ้า, เครื่องมือดับเพลิง แก่ Maintenance Officer สังเกตการซ่อมบำรุง</p>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-1.5 text-black font-sans text-xs mr-4">
-                <span className="block mb-6 text-[10px] font-bold">รับรองโดย Maintenance Officer</span>
-                <div className="relative w-48 border-b border-dotted border-black flex justify-center items-center h-8">
-                  <div className="absolute text-blue-850 font-serif italic text-[15px] select-none font-black -rotate-3 pl-2 tracking-widest">
-                    {managerInfo ? managerInfo.shortName : ''}
-                  </div>
-                </div>
-                <span className="text-[10px] text-neutral-500 font-semibold">{managerInfo ? `( ${managerInfo.fullName} )` : ''}</span>
-                <span className="text-[9px] text-neutral-400">Maintenance Lead Certifier</span>
-              </div>
-            </div>
-
             {/* Footer */}
-            <div className="flex justify-between items-center text-[10.5px] text-neutral-500 font-sans mt-8 pt-3 border-t border-neutral-300 select-none">
-              <span>Effective date {formatEffectiveDate(latestCertifiedDate)}, Rev.00</span>
-              <span className="font-bold">Page 1 of 1</span>
+            <div className="flex justify-between items-center text-[10.5px] text-neutral-500 font-sans mt-8 pt-2 border-t border-neutral-300 select-none">
+              <span className="italic">Effective date 23/04/2025, Rev.00</span>
+              <span className="font-bold italic">Page 1 of 1</span>
             </div>
           </div>
         </div>
