@@ -23,6 +23,8 @@ export interface User {
   photoUrl: string; // Data URL or placeholder
   firstName: string;
   lastName: string;
+  firstNameEn?: string; // English First Name
+  lastNameEn?: string;  // English Last Name
   role: UserRole;
   signature: string; // Base64 signature path or SVG representation
   email: string;

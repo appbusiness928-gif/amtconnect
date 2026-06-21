@@ -56,6 +56,8 @@ export default function MaintenancePanel({
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);
   const [editLastName, setEditLastName] = useState(currentUser.lastName);
+  const [editFirstNameEn, setEditFirstNameEn] = useState(currentUser.firstNameEn || '');
+  const [editLastNameEn, setEditLastNameEn] = useState(currentUser.lastNameEn || '');
   const [editEmail, setEditEmail] = useState(currentUser.email);
   const [editPassword, setEditPassword] = useState(currentUser.password || '');
   const [editPhoto, setEditPhoto] = useState(currentUser.photoUrl);
@@ -64,6 +66,8 @@ export default function MaintenancePanel({
   const handleCancelEditProfile = () => {
     setEditFirstName(currentUser.firstName);
     setEditLastName(currentUser.lastName);
+    setEditFirstNameEn(currentUser.firstNameEn || '');
+    setEditLastNameEn(currentUser.lastNameEn || '');
     setEditEmail(currentUser.email);
     setEditPassword(currentUser.password || '');
     setEditPhoto(currentUser.photoUrl);
@@ -80,6 +84,8 @@ export default function MaintenancePanel({
     onUpdateProfile({
       firstName: editFirstName,
       lastName: editLastName,
+      firstNameEn: editFirstNameEn,
+      lastNameEn: editLastNameEn,
       email: editEmail,
       password: editPassword,
       photoUrl: editPhoto,
@@ -314,7 +320,7 @@ export default function MaintenancePanel({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-neutral-700 mb-1">ชื่อจริง *</label>
+                <label className="block text-[10px] font-bold text-neutral-700 mb-1">ชื่อจริง (ภาษาไทย) *</label>
                 <input 
                   type="text" 
                   required 
@@ -325,7 +331,7 @@ export default function MaintenancePanel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-neutral-700 mb-1">นามสกุล *</label>
+                <label className="block text-[10px] font-bold text-neutral-700 mb-1">นามสกุล (ภาษาไทย) *</label>
                 <input 
                   type="text" 
                   required 
@@ -333,6 +339,31 @@ export default function MaintenancePanel({
                   value={editLastName} 
                   onChange={(e) => setEditLastName(e.target.value)} 
                   className={`w-full border px-3 py-2 rounded focus:outline-none focus:border-neutral-900 ${!isEditingProfile ? 'bg-neutral-100 text-neutral-500 border-neutral-200 cursor-not-allowed' : 'border-neutral-300'}`} 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-700 mb-1">ชื่อจริง (ภาษาอังกฤษ) *</label>
+                <input 
+                  type="text" 
+                  required 
+                  disabled={!isEditingProfile} 
+                  value={editFirstNameEn} 
+                  onChange={(e) => setEditFirstNameEn(e.target.value)} 
+                  className={`w-full border px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-xs ${!isEditingProfile ? 'bg-neutral-100 text-neutral-500 border-neutral-200 cursor-not-allowed' : 'border-neutral-300'}`} 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-700 mb-1">นามสกุล (ภาษาอังกฤษ) *</label>
+                <input 
+                  type="text" 
+                  required 
+                  disabled={!isEditingProfile} 
+                  value={editLastNameEn} 
+                  onChange={(e) => setEditLastNameEn(e.target.value)} 
+                  className={`w-full border px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-xs ${!isEditingProfile ? 'bg-neutral-100 text-neutral-500 border-neutral-200 cursor-not-allowed' : 'border-neutral-300'}`} 
                 />
               </div>
             </div>

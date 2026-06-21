@@ -362,6 +362,8 @@ export default function ExamOfficeStudentPanel({
   const [tableDate, setTableDate] = useState(new Date().toISOString().split('T')[0]);
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);
   const [editLastName, setEditLastName] = useState(currentUser.lastName);
+  const [editFirstNameEn, setEditFirstNameEn] = useState(currentUser.firstNameEn || '');
+  const [editLastNameEn, setEditLastNameEn] = useState(currentUser.lastNameEn || '');
   const [editEmail, setEditEmail] = useState(currentUser.email);
   const [editPassword, setEditPassword] = useState(currentUser.password || '');
   const [editPhoto, setEditPhoto] = useState(currentUser.photoUrl);
@@ -379,6 +381,8 @@ export default function ExamOfficeStudentPanel({
   const handleCancelEditProfile = () => {
     setEditFirstName(currentUser.firstName);
     setEditLastName(currentUser.lastName);
+    setEditFirstNameEn(currentUser.firstNameEn || '');
+    setEditLastNameEn(currentUser.lastNameEn || '');
     setEditEmail(currentUser.email);
     setEditPassword(currentUser.password || '');
     setEditPhoto(currentUser.photoUrl);
@@ -395,6 +399,8 @@ export default function ExamOfficeStudentPanel({
     onUpdateProfile({
       firstName: editFirstName,
       lastName: editLastName,
+      firstNameEn: editFirstNameEn,
+      lastNameEn: editLastNameEn,
       email: editEmail,
       password: editPassword,
       photoUrl: editPhoto,
@@ -850,8 +856,8 @@ export default function ExamOfficeStudentPanel({
 
           <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
             <span className="block text-[6.5px] text-zinc-400 font-bold uppercase">NAME-SURNAME</span>
-            <div className={`text-[12.5px] font-black tracking-tight truncate uppercase leading-tight ${idCardTheme === 'minimal' ? 'text-neutral-950 font-black' : 'text-white'}`}>
-              {editFirstName} {editLastName}
+            <div className={`text-[12.5px] font-bold tracking-tight truncate leading-tight ${idCardTheme === 'minimal' ? 'text-neutral-950' : 'text-white'}`}>
+              {editFirstNameEn && editLastNameEn ? `${editFirstNameEn} ${editLastNameEn}` : `${editFirstName} ${editLastName}`}
             </div>
             
             <div className="text-[8.5px] font-sans font-medium mt-0.5">
@@ -1054,8 +1060,8 @@ export default function ExamOfficeStudentPanel({
 
         {/* User Info Details - containing Name, Position, ID, and Cohort/Batch */}
         <div className="w-full text-center px-1">
-          <h3 className={`font-sans font-extrabold text-[12px] truncate leading-tight uppercase ${t.textColor}`}>
-            {editFirstName} {editLastName}
+          <h3 className={`font-sans font-bold text-[12px] truncate leading-tight ${t.textColor}`}>
+            {editFirstNameEn && editLastNameEn ? `${editFirstNameEn} ${editLastNameEn}` : `${editFirstName} ${editLastName}`}
           </h3>
           
           <div className="flex flex-col items-center mt-1 space-y-0.5">
@@ -1279,7 +1285,7 @@ export default function ExamOfficeStudentPanel({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">ชื่อจริง *</label>
+                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">ชื่อจริง (ภาษาไทย) *</label>
                   <input 
                     type="text" 
                     required 
@@ -1290,7 +1296,7 @@ export default function ExamOfficeStudentPanel({
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">นามสกุล *</label>
+                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">นามสกุล (ภาษาไทย) *</label>
                   <input 
                     type="text" 
                     required 
@@ -1298,6 +1304,31 @@ export default function ExamOfficeStudentPanel({
                     value={editLastName} 
                     onChange={(e) => setEditLastName(e.target.value)} 
                     className={`w-full border px-2 py-1 rounded focus:outline-none text-xs transition-colors ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">ชื่อจริง (ภาษาอังกฤษ) *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    disabled={!isEditingProfile} 
+                    value={editFirstNameEn} 
+                    onChange={(e) => setEditFirstNameEn(e.target.value)} 
+                    className={`w-full border px-2 py-1 rounded focus:outline-none text-xs transition-colors font-mono ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">นามสกุล (ภาษาอังกฤษ) *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    disabled={!isEditingProfile} 
+                    value={editLastNameEn} 
+                    onChange={(e) => setEditLastNameEn(e.target.value)} 
+                    className={`w-full border px-2 py-1 rounded focus:outline-none text-xs transition-colors font-mono ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
                   />
                 </div>
               </div>

@@ -642,7 +642,7 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
             {/* User Info Details */}
             <div className="w-full">
               <h3 className="font-sans font-bold text-xs text-neutral-950 truncate">
-                {user.firstName} {user.lastName}
+                {user.firstNameEn && user.lastNameEn ? `${user.firstNameEn} ${user.lastNameEn}` : `${user.firstName} ${user.lastName}`}
               </h3>
               <p className="font-sans text-[9px] font-bold text-neutral-600 uppercase tracking-wide">
                 ตำแหน่ง: {user.role}
