@@ -1722,37 +1722,60 @@ ${isApproved ? 'กรุณาตรวจสอบและปฏิบัต�
   };
 
   // --- ACTIONS FOR BORROWING ---
-  const handleBorrowEquipment = (code: string, qtyNeeded: number, sigImage: string) => {
+  const handleBorrowEquipment = (
+    codeOrItems: string | { code: string; qty: number }[],
+    qtyNeeded: number,
+    sigImage: string,
+    purpose?: string
+  ) => {
     if (!currentUser) return;
-    const tool = db.equipment.find(eq => eq.code === code);
-    if (!tool) return;
 
-    const freshBorrow: BorrowRecord = {
-      id: `BRW-${Date.now()}`,
-      equipmentCode: code,
-      toolName: tool.toolName,
-      borrowerId: currentUser.id,
-      borrowerName: `${currentUser.firstName} ${currentUser.lastName}`,
-      borrowerRole: currentUser.role,
-      qty: qtyNeeded,
-      borrowDate: new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH'),
-      status: 'Borrowed',
-      borrowSignature: sigImage,
-      toolLocation: tool.location,
-    };
+    let itemsToBorrow: { code: string; qty: number }[] = [];
+    if (typeof codeOrItems === 'string') {
+      itemsToBorrow = [{ code: codeOrItems, qty: qtyNeeded }];
+    } else {
+      itemsToBorrow = codeOrItems;
+    }
 
-    const nextBorrowRecords = [...db.borrowRecords, freshBorrow];
+    if (itemsToBorrow.length === 0) return;
 
-    // Deduct stock Qty
-    const nextEquipment = db.equipment.map(eq => 
-      eq.code === code 
-        ? { 
-            ...eq, 
-            qty: eq.qty - qtyNeeded,
-            status: eq.qty - qtyNeeded === 0 ? ('NotReady' as const) : eq.status
-          } 
-        : eq
-    );
+    let nextBorrowRecords = [...db.borrowRecords];
+    let nextEquipment = [...db.equipment];
+    const nowStr = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH');
+
+    for (let i = 0; i < itemsToBorrow.length; i++) {
+      const { code, qty } = itemsToBorrow[i];
+      const tool = nextEquipment.find(eq => eq.code === code);
+      if (!tool) continue;
+
+      const freshBorrow: BorrowRecord = {
+        id: `BRW-${Date.now()}-${i}-${Math.floor(Math.random() * 1000)}`,
+        equipmentCode: code,
+        toolName: tool.toolName,
+        borrowerId: currentUser.id,
+        borrowerName: `${currentUser.firstName} ${currentUser.lastName}`,
+        borrowerRole: currentUser.role,
+        qty: qty,
+        borrowDate: nowStr,
+        status: 'Borrowed',
+        borrowSignature: sigImage,
+        toolLocation: tool.location,
+        purpose: purpose || '',
+      };
+
+      nextBorrowRecords.push(freshBorrow);
+
+      // Deduct stock Qty
+      nextEquipment = nextEquipment.map(eq => 
+        eq.code === code 
+          ? { 
+              ...eq, 
+              qty: eq.qty - qty,
+              status: eq.qty - qty === 0 ? ('NotReady' as const) : eq.status
+            } 
+          : eq
+      );
+    }
 
     updateDb({
       ...db,

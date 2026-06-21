@@ -593,6 +593,44 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
+      <style>{`
+        @media print {
+          @page {
+            size: portrait;
+            margin: 0mm !important;
+          }
+          html, body, #root {
+            width: 100vw !important;
+            height: 100vh !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            color: black !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          .custom-print-card, .custom-print-card * {
+            visibility: visible !important;
+          }
+          .custom-print-card {
+            position: fixed !important;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 53.98mm !important;
+            height: 85.6mm !important;
+            border: 0.5px solid #d1d5db !important;
+            border-radius: 3.18mm !important;
+            box-sizing: border-box !important;
+            page-break-inside: avoid !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            z-index: 9999999 !important;
+          }
+        }
+      `}</style>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden flex flex-col border border-neutral-200">
         <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print relative z-50">
           <span className="text-xs font-mono font-bold">AMT CONNECT ID CARD ENGINE</span>
@@ -607,23 +645,23 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
 
         <div className="p-8 bg-neutral-100 flex-1 flex flex-col items-center justify-center">
           {/* Vertical ID Badge Card Layout */}
-          <div className="w-[60mm] h-[95mm] bg-white border border-neutral-400 rounded-lg shadow-md p-4 flex flex-col justify-between items-center relative text-center print-card overflow-hidden">
+          <div className="w-[53.98mm] h-[85.6mm] bg-white border border-neutral-400 rounded-lg shadow-md p-3 flex flex-col justify-between items-center relative text-center print-card custom-print-card overflow-hidden" style={{ boxSizing: 'border-box' }}>
             
             {/* Header Accent block */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-neutral-950" />
             
             {/* School Brand */}
-            <div className="mt-2 w-full">
-              <h4 className="font-sans font-extrabold text-[11px] uppercase tracking-wider text-neutral-950 font-semibold">
+            <div className="mt-1 w-full">
+              <h4 className="font-sans font-extrabold text-[10px] uppercase tracking-wider text-neutral-950 font-semibold leading-tight">
                 AMT CONNECT
               </h4>
-              <p className="font-sans text-[7px] text-neutral-500 font-medium">สถาบันฝึกอบรมช่างบำรุงรักษาอากาศยาน</p>
-              <p className="font-mono text-[6px] text-neutral-400 mt-0.5">AIRCRAFT MAINTENANCE TRAINING CENTER</p>
+              <p className="font-sans text-[6.5px] text-neutral-500 font-medium leading-tight mt-0.5">สถาบันฝึกอบรมช่างบำรุงรักษาอากาศยาน</p>
+              <p className="font-mono text-[5.5px] text-neutral-400 mt-0.5 leading-tight uppercase">AIRCRAFT MAINTENANCE TRAINING CENTER</p>
             </div>
 
             {/* Photo */}
             <div className="my-1.5 shrink-0">
-              <div className="w-20 h-24 border-2 border-neutral-950 rounded-xs overflow-hidden bg-neutral-100 relative">
+              <div className="w-[18mm] h-[22.5mm] border-2 border-neutral-950 rounded-xs overflow-hidden bg-neutral-100 relative shadow-xs">
                 {user.photoUrl ? (
                   <img
                     src={user.photoUrl}
@@ -632,7 +670,7 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-400 font-sans">
+                  <div className="w-full h-full flex items-center justify-center text-[8px] text-neutral-400 font-sans leading-tight">
                     รูปถ่ายนักศึกษา
                   </div>
                 )}
@@ -641,26 +679,26 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
 
             {/* User Info Details */}
             <div className="w-full">
-              <h3 className="font-sans font-bold text-xs text-neutral-950 truncate">
+              <h3 className="font-sans font-bold text-[11px] text-neutral-900 whitespace-normal break-words leading-tight px-0.5 text-center">
                 {user.firstName} {user.lastName}
               </h3>
-              <p className="font-sans text-[9px] font-bold text-neutral-600 uppercase tracking-wide">
+              <p className="font-sans text-[8.5px] font-bold text-neutral-600 mt-0.5 leading-tight">
                 ตำแหน่ง: {user.role}
               </p>
-              <p className="font-mono text-[9px] text-neutral-500 font-bold mt-0.5">
+              <p className="font-mono text-[8px] text-neutral-500 font-bold mt-0.5 leading-none">
                 ID: {user.id}
               </p>
             </div>
 
             {/* QR Code Section */}
-            <div className="my-2 select-none flex flex-col items-center">
+            <div className="my-1 select-none flex flex-col items-center shrink-0">
               <img 
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + user.id)}`} 
                 alt="QR Verification" 
-                className="w-18 h-18 border border-neutral-300 p-1 bg-white shadow-xs rounded-md" 
+                className="w-13 h-13 border border-neutral-300 p-0.5 bg-white shadow-xs rounded-xs" 
                 referrerPolicy="no-referrer"
               />
-              <span className="text-[6.5px] text-neutral-400 font-mono tracking-widest mt-1 uppercase font-bold">VERIFY QR CODE</span>
+              <span className="text-[5px] text-neutral-400 font-mono tracking-widest mt-0.5 uppercase font-bold leading-none">VERIFY QR CODE</span>
             </div>
 
             {/* Signature Area */}
@@ -669,12 +707,12 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
                 <img
                   src={user.signature}
                   alt="ลายมือชื่อ"
-                  className="h-5 object-contain pointer-events-none filter grayscale mix-blend-multiply"
+                  className="h-4 object-contain pointer-events-none filter grayscale mix-blend-multiply"
                 />
               ) : (
-                <div className="h-5 text-[8px] text-neutral-300 font-sans italic">ไม่มีลายเซ็น</div>
+                <div className="h-4 text-[7px] text-neutral-300 font-sans italic flex items-center">ไม่มีลายเซ็น</div>
               )}
-              <span className="text-[7px] text-neutral-400 font-sans mt-0.5">ลายมือชื่อผู้ถือบัตร</span>
+              <span className="text-[6px] text-neutral-400 font-sans mt-0.5 leading-none">ลายมือชื่อผู้ถือบัตร</span>
             </div>
 
             {/* Footer stamp */}
