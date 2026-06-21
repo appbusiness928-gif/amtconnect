@@ -429,9 +429,17 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
   }
 
   try {
-    const isA4FullPortrait = element.classList.contains('full-a4-portrait') || element.innerHTML.includes('TLTC-MO-033') || filename.includes('ขออนุญาตใช้ห้อง');
+    const isA4ZeroMargin = element.classList.contains('full-a4-portrait') || 
+                           element.classList.contains('print-landscape') || 
+                           element.classList.contains('print-landscape-mo001') ||
+                           element.innerHTML.includes('TLTC-MO-033') || 
+                           element.innerHTML.includes('TLTC-MO-034') || 
+                           element.innerHTML.includes('TLTC-MO-001') ||
+                           filename.includes('ขออนุญาตใช้ห้อง') || 
+                           filename.includes('TLTC-MO-034') || 
+                           filename.includes('TLTC-MO-001');
     const opt = {
-      margin:       isA4FullPortrait ? 0 : (orientation === 'portrait' ? [12, 10, 12, 10] : [10, 10, 10, 10]),
+      margin:       isA4ZeroMargin ? 0 : (orientation === 'portrait' ? [12, 10, 12, 10] : [10, 10, 10, 10]),
       filename:     filename,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { 
@@ -1442,8 +1450,9 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
           </button>
 
           <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+            onClick={handleDownloadPDF}
+            disabled={isWorking}
+            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-emerald-650 hover:bg-emerald-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
           >
             <Printer size={13} />
             <span>พิมพ์เอกสารนี้ (Print)</span>
@@ -1676,8 +1685,9 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
           </button>
 
           <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+            onClick={handleDownloadPDF}
+            disabled={isWorking}
+            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-emerald-650 hover:bg-emerald-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
           >
             <Printer size={13} />
             <span>พิมพ์บันทึกการใช้ห้อง (Print)</span>
@@ -1972,8 +1982,9 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
           </button>
 
           <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
+            onClick={handleDownloadPDF}
+            disabled={isWorking}
+            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-emerald-650 hover:bg-emerald-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
           >
             <Printer size={13} />
             <span>พิมพ์รายงานชิ้นนี้ (Print)</span>
