@@ -36,7 +36,7 @@ interface ExamOfficeStudentPanelProps {
   onAddSchedule: (s: ClassSchedule) => void;
   onAddExam: (ex: ExamSchedule) => void;
   onAddGrade: (grade: ExamGrade) => void;
-  onBorrowEquipment: (codeOrItems: string | { code: string; qty: number }[], qty: number, signature: string, purpose?: string) => void;
+  onBorrowEquipment: (code: string, qty: number, signature: string) => void;
   onReturnEquipment: (borrowId: string) => void;
   onSubmitRoomRequest: (req: Omit<RoomRequest, 'id' | 'maintenanceApproved' | 'isRoomUsageRecordCreated'>) => boolean;
   onViewRequestDoc: (req: RoomRequest) => void;
@@ -166,8 +166,8 @@ export default function ExamOfficeStudentPanel({
   // State Tabs
   const [activeTab, setActiveTab] = useState<'profile' | 'action' | 'schedule' | 'academic' | 'borrow' | 'roster' | 'requests'>('profile');
 
-  // Instructor Action Tab Switcher (Schedule management vs Lab requests vs Exam management)
-  const [instActionTab, setInstActionTab] = useState<'schedule' | 'room' | 'exam'>('schedule');
+  // Instructor Action Tab Switcher (Schedule management vs Lab requests)
+  const [instActionTab, setInstActionTab] = useState<'schedule' | 'room'>('schedule');
 
   // Monthly calendar states
   const [calendarViewMode, setCalendarViewMode] = useState<'weekly' | 'monthly'>('monthly');
@@ -268,14 +268,12 @@ export default function ExamOfficeStudentPanel({
 
   // Equipment borrowing states
   const [targetCode, setTargetCode] = useState('');
-  const [borrowQty, setBorrowQty] = useState<number | string>(1);
+  const [borrowQty, setBorrowQty] = useState(1);
   const [borrowSignature, setBorrowSignature] = useState('');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [scannedTool, setScannedTool] = useState<Equipment | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showTraceabilityDoc, setShowTraceabilityDoc] = useState(false);
-  const [borrowCart, setBorrowCart] = useState<{ code: string; toolName: string; qty: number }[]>([]);
-  const [borrowPurpose, setBorrowPurpose] = useState('');
 
   React.useEffect(() => {
     let html5QrCode: Html5Qrcode | null = null;
@@ -409,9 +407,7 @@ export default function ExamOfficeStudentPanel({
       signature: editSig
     });
     setIsEditingProfile(false);
-    
-    // Log English Name to Sheet (simulation/proxy)                
-    console.log("Saving to Sheet: ", { firstNameEn: editFirstNameEn, lastNameEn: editLastNameEn });
+    Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'แก้ไขข้อมูลของฉันเรียบร้อยแล้ว', confirmButtonColor: '#171717' });
   };
 
   const checkRoomBusy = (roomName: string): boolean => {
@@ -670,19 +666,19 @@ export default function ExamOfficeStudentPanel({
       setScannedTool(match);
       setTargetCode(match.code);
       setIsCameraActive(false);
-      Swal.fire({ icon: 'success', title: 'พบอุปกรณ์ช่าง', text: `อุปกรณ์: ${match.toolName} (คงเหลือ: ${match.qty} EA) ได้ระบุรหัสในช่องกรอกข้อมูลแล้ว`, confirmButtonColor: '#171717' });
+      Swal.fire({ icon: 'success', title: 'พบอุปกรณ์ช่าง', text: `อุปกรณ์: ${match.toolName} (คงเหลือ: ${match.qty} EA)`, confirmButtonColor: '#171717' });
     } else {
       Swal.fire({ icon: 'error', title: 'ไม่พบรหัสอุปกรณ์', text: 'คิวอาร์โค้ดนี้ไม่ได้ถูกจดจำในโรงซ่อมบำรุง', confirmButtonColor: '#171717' });
     }
   };
 
-  const handleAddToBorrowCart = () => {
-    const qtyNum = parseInt(String(borrowQty), 10) || 1;
+  const handleBorrowSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!targetCode) {
       Swal.fire({ icon: 'error', title: 'ระบุรหัสคิวอาร์โค้ด', text: 'โปรดสแกนป้ายคิวอาร์โค้ดหรือป้อนรหัสอุปกรณ์ก่อน', confirmButtonColor: '#171717' });
       return;
     }
-    const match = equipments.find(eq => eq.code.trim().toUpperCase() === targetCode.trim().toUpperCase());
+    const match = equipments.find(eq => eq.code === targetCode);
     if (!match) {
       Swal.fire({ icon: 'error', title: 'ไม่พบอุปกรณ์', text: 'ไม่พบเครื่องมือชิ้นนี้ในรายการ', confirmButtonColor: '#171717' });
       return;
@@ -696,92 +692,26 @@ export default function ExamOfficeStudentPanel({
       });
       return;
     }
-
     const totalBorrowed = borrowRecords
       .filter(r => r.equipmentCode === match.code && r.status !== 'Returned')
       .reduce((sum, r) => sum + r.qty, 0);
     const available = match.qty - totalBorrowed;
 
-    const existingCartItem = borrowCart.find(item => item.code === match.code);
-    const existingQty = existingCartItem ? existingCartItem.qty : 0;
-    const requestedTotal = existingQty + qtyNum;
-
-    if (available < requestedTotal) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'ของไม่พอ',
-        text: `จำนวนอุปกรณ์ในคลังคงเหลือพร้อมยืม ${available} EA แต่รวมในรายการยืมทั้งหมดของท่านคือ ${requestedTotal} EA`,
-        confirmButtonColor: '#171717'
-      });
-      return;
-    }
-
-    if (existingCartItem) {
-      setBorrowCart(borrowCart.map(item => item.code === match.code ? { ...item, qty: requestedTotal } : item));
-    } else {
-      setBorrowCart([...borrowCart, { code: match.code, toolName: match.toolName, qty: qtyNum }]);
-    }
-
-    setTargetCode('');
-    setBorrowQty(1);
-    setScannedTool(null);
-
-    Swal.fire({
-      icon: 'success',
-      title: 'เพิ่มอุปกรณ์เรียบร้อย',
-      text: `เพิ่ม ${match.toolName} จำนวน ${qtyNum} EA ลงในรายการที่จะยืมเรียบร้อยแล้ว`,
-      timer: 1500,
-      showConfirmButton: false,
-    });
-  };
-
-  const handleRemoveFromBorrowCart = (code: string) => {
-    setBorrowCart(borrowCart.filter(item => item.code !== code));
-  };
-
-  const handleUpdateCartItemQty = (code: string, newQty: number) => {
-    const match = equipments.find(eq => eq.code === code);
-    if (!match) return;
-
-    const totalBorrowed = borrowRecords
-      .filter(r => r.equipmentCode === code && r.status !== 'Returned')
-      .reduce((sum, r) => sum + r.qty, 0);
-    const available = match.qty - totalBorrowed;
-
-    if (newQty > available) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'ของไม่พอ',
-        text: `อุปกรณ์ชิ้นนี้คงเหลือพร้อมยืมสูงสุดสุด ${available} EA`,
-        confirmButtonColor: '#171717'
-      });
-      return;
-    }
-
-    setBorrowCart(borrowCart.map(item => item.code === code ? { ...item, qty: Math.max(1, newQty) } : item));
-  };
-
-  const handleBorrowSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (borrowCart.length === 0) {
-      Swal.fire({ icon: 'error', title: 'รายการยืมว่างเปล่า', text: 'โปรดเพิ่มอุปกรณ์ลงในตะกร้า/รายการเพื่อขอยืมอย่างน้อย 1 รายการ', confirmButtonColor: '#171717' });
-      return;
-    }
-    if (!borrowPurpose.trim()) {
-      Swal.fire({ icon: 'error', title: 'โปรดระบุวัตถุประสงค์การยืม', text: 'กรุณากรอกวัตถุประสงค์การยืม (เช่น JOB Card No.)', confirmButtonColor: '#171717' });
+    if (available < borrowQty) {
+      Swal.fire({ icon: 'warning', title: 'ของไม่พอ', text: 'จำนวนอุปกรณ์ในคลังมีไม่เพียงพอต่อการยืมปฏิบัติการครั้งนี้', confirmButtonColor: '#171717' });
       return;
     }
     if (!borrowSignature) {
-      Swal.fire({ icon: 'error', title: 'โปรดลงนามและเซ็นลายเซ็น', text: 'จำเป็นต้องสเกตช์ลายเซ็นอิเล็กทรอนิกส์ยืนยันรับเครื่องมือด้านล่างความปลอดภัยก่อนยืมอุปกรณ์', confirmButtonColor: '#171717' });
+      Swal.fire({ icon: 'error', title: 'โปรดลงนามและเซ็นลายเซ็น', text: 'จำเป็นต้องวาดลายมือชื่ออิเล็กทรอนิกส์ด้านล่างก่อนยืมอุปกรณ์', confirmButtonColor: '#171717' });
       return;
     }
 
-    // Call onBorrowEquipment with bulk items
-    onBorrowEquipment(borrowCart, 0, borrowSignature, borrowPurpose);
-    setBorrowCart([]);
-    setBorrowPurpose('');
+    onBorrowEquipment(targetCode, borrowQty, borrowSignature);
+    setTargetCode('');
+    setBorrowQty(1);
     setBorrowSignature('');
-    Swal.fire({ icon: 'success', title: 'เบิกจ่ายเครื่องมือสำเร็จ', text: 'การขอยืมสัมฤทธิ์ผล อุปกรณ์ได้รับอนุมัติพายึดและบันทึกประวัติการยืมเรียบร้อย', confirmButtonColor: '#171717' });
+    setScannedTool(null);
+    Swal.fire({ icon: 'success', title: 'เบิกจ่ายเครื่องมือสำเร็จ', text: 'อุปกรณ์ถูกโอนย้ายสถานะ และสิทธิ์ในการพายึดเรียบร้อย', confirmButtonColor: '#171717' });
   };
 
   const getThemeStyles = () => {
@@ -926,14 +856,9 @@ export default function ExamOfficeStudentPanel({
 
           <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
             <span className="block text-[6.5px] text-zinc-400 font-bold uppercase">NAME-SURNAME</span>
-            <div className={`text-[11.5px] font-bold tracking-tight whitespace-normal break-words leading-tight px-0.5 ${idCardTheme === 'minimal' ? 'text-neutral-950' : 'text-white'}`}>
-              {editFirstName} {editLastName}
+            <div className={`text-[12.5px] font-bold tracking-tight truncate leading-tight ${idCardTheme === 'minimal' ? 'text-neutral-950' : 'text-white'}`}>
+              {editFirstNameEn && editLastNameEn ? `${editFirstNameEn} ${editLastNameEn}` : `${editFirstName} ${editLastName}`}
             </div>
-            {(editFirstNameEn || editLastNameEn) && (
-              <div className={`text-[8.5px] font-mono tracking-tight whitespace-normal break-words leading-tight px-0.5 uppercase mt-0.5 ${idCardTheme === 'minimal' ? 'text-neutral-600 font-medium' : 'text-slate-350'}`}>
-                {editFirstNameEn} {editLastNameEn}
-              </div>
-            )}
             
             <div className="text-[8.5px] font-sans font-medium mt-0.5">
               <span className="text-zinc-400 uppercase text-[6.5px] block font-bold">POSITION</span>
@@ -1135,14 +1060,9 @@ export default function ExamOfficeStudentPanel({
 
         {/* User Info Details - containing Name, Position, ID, and Cohort/Batch */}
         <div className="w-full text-center px-1">
-          <h3 className={`font-sans font-bold text-[11px] whitespace-normal break-words leading-tight px-0.5 ${t.textColor}`}>
-            {editFirstName} {editLastName}
+          <h3 className={`font-sans font-bold text-[12px] truncate leading-tight ${t.textColor}`}>
+            {editFirstNameEn && editLastNameEn ? `${editFirstNameEn} ${editLastNameEn}` : `${editFirstName} ${editLastName}`}
           </h3>
-          {(editFirstNameEn || editLastNameEn) && (
-            <p className={`font-mono text-[8.5px] tracking-tight whitespace-normal break-words leading-tight px-0.5 uppercase mt-0.5 ${idCardTheme === 'minimal' ? 'text-neutral-600 font-medium' : 'text-slate-350'}`}>
-              {editFirstNameEn} {editLastNameEn}
-            </p>
-          )}
           
           <div className="flex flex-col items-center mt-1 space-y-0.5">
             <span className={`font-sans text-[8.5px] font-extrabold uppercase tracking-wide leading-none ${t.descColor}`}>
@@ -1239,12 +1159,9 @@ export default function ExamOfficeStudentPanel({
         {isExam && (
           <button
             id="seoExamActionBtn"
-            onClick={() => {
-              setActiveTab('action');
-              setInstActionTab('exam');
-            }}
+            onClick={() => setActiveTab('action')}
             className={`w-full py-2 px-3 text-left rounded-lg font-sans font-bold transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === 'action' && instActionTab === 'exam' ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+              activeTab === 'action' ? 'bg-[#0F172A] text-white shadow-xs' : 'hover:bg-slate-50 text-slate-650 hover:text-slate-900'
             }`}
           >
             <Calendar size={14} />
@@ -1252,13 +1169,13 @@ export default function ExamOfficeStudentPanel({
           </button>
         )}
 
-        {/* "ขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง" - Now a direct button for Students, Instructors, Office, and Examination staff! */}
-        {(isStudent || isInstructor || isOffice || isExam) && (
+        {/* "ขอใช้พื้นที่ห้องปฏิบัติการ/บันทึกการขอใช้ห้อง" - Now a direct button for Students, Instructors, and Office! */}
+        {(isStudent || isInstructor || isOffice) && (
           <button
             id="seoRoomRequestSidebarBtn"
             onClick={() => {
               setActiveTab('action');
-              if (isInstructor || isOffice || isExam) {
+              if (isInstructor || isOffice) {
                 setInstActionTab('room');
               }
             }}
@@ -1326,7 +1243,7 @@ export default function ExamOfficeStudentPanel({
         {/* TAB 1: USER INFO / STUDENT REVIEWS */}
         {activeTab === 'profile' && (
           <div className="space-y-6 animate-fade-in">
-            <h3 className="font-sans font-extrabold text-[#0F172A] text-sm border-b pb-2 flex items-center justify-between">
+            <h3 className="font-sans font-extrabold text-sm border-b pb-2 flex items-center justify-between">
               <span>ประวัติข้อมูลส่วนตัวและผลการจองของฉัน ({currentUser.role})</span>
               <span className="font-mono text-[10px] text-neutral-500">ID: {currentUser.id}</span>
             </h3>
@@ -1335,6 +1252,8 @@ export default function ExamOfficeStudentPanel({
             <form onSubmit={handleUpdateProfileSubmit} className="space-y-4 bg-stone-50 border border-neutral-300 p-4 rounded">
               <div className="flex items-center justify-between border-b pb-1">
                 <h4 className="font-bold text-neutral-900 text-xs">แก้ไขประวัติข้อมูลและรูปภาพลายเซ็น</h4>
+                
+                
               </div>
               
               <div className="flex flex-col sm:flex-row items-center gap-6 p-2 rounded mb-1">
@@ -1496,11 +1415,6 @@ export default function ExamOfficeStudentPanel({
                 <img src={currentUser.photoUrl} alt="avatar" className="w-16 h-20 object-cover rounded border border-neutral-400 shrink-0 shadow-sm" referrerPolicy="no-referrer" />
                 <div className="text-left">
                   <h4 className="font-bold text-neutral-900 text-sm">{currentUser.firstName} {currentUser.lastName}</h4>
-                  {(currentUser.firstNameEn || currentUser.lastNameEn) && (
-                    <p className="font-mono text-xs text-neutral-500 uppercase font-semibold leading-tight mb-1">
-                      {currentUser.firstNameEn} {currentUser.lastNameEn}
-                    </p>
-                  )}
                   <p className="font-sans text-[11px] text-neutral-600">ตำแหน่งการช่าง: <b>{currentUser.role}</b></p>
                   <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 font-mono text-[10px] px-2 py-0.5 rounded font-bold mt-2 inline-block">
                     บัญชีพร้อมใช้งาน (Approved)
@@ -1529,8 +1443,26 @@ export default function ExamOfficeStudentPanel({
                 <div>
                   <h4 className="font-sans font-extrabold text-[#0F172A] text-sm flex items-center gap-2">
                     <span className="p-1.5 bg-[#0F172A] text-white rounded-md text-xs">🪪</span>
-                    พิมพ์บัตร
+                    เครื่องมือออกแบบและระบบจัดทำสร้างบัตรขึ้นทะเบียนด้วยตนเอง (Personal ID Card Creator)
                   </h4>
+                  <p className="text-slate-500 text-[11px] mt-1 font-sans">
+                    ออกแบบ จัดหน้าตา และได้รับบัตรประจำตัวการช่างขนาดสากลพลาสติกจริง (CR-80: 8.56 ซม. x 5.40 ซม.) สัญชาติการวิชาอากาศยาน บันทึกพล็อตลงเครื่องพิมพ์ขนาด 1:1 ได้ทันที
+                  </p>
+                  
+                  {/* Print custom user tip for removing browser headers and footers */}
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 font-sans space-y-1">
+                    <p className="font-extrabold flex items-center gap-1.5 text-amber-950">
+                      <span>💡</span> วิธีลบที่อยู่เว็บและวันที่ตรงมุมขอบออก (ลบส่วนหัว/ท้ายกระดาษที่เบราว์เซอร์สร้าง):
+                    </p>
+                    <ul className="list-disc pl-4 space-y-0.5 mt-1 leading-relaxed text-amber-850">
+                      <li>
+                        <strong>สำหรับ iPad/iPhone (Safari):</strong> เมื่อกดปุ่มสั่งพิมพ์แล้ว ในหน้าตั้งค่าเครื่องพิมพ์ ให้เลื่อนลงล่างสุด แล้วปิดสวิตช์ <strong>"หัวกระดาษและท้ายกระดาษ" (Headers &amp; Footers)</strong> เพื่อทำให้ขอบขาวสะอาดสะอ้าน
+                      </li>
+                      <li>
+                        <strong>สำหรับ Google Chrome / คอมพิวเตอร์:</strong> ในหน้าพรีวิวสั่งพิมพ์ ให้กด "การตั้งค่าเพิ่มเติม" (More settings) &gt; ระยะขอบ (Margins) เลือก <strong>"ไม่มี" (None)</strong> และเปิดติ๊กถูก <strong>"กราฟิกพื้นหลัง" (Background graphics)</strong>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-2 self-start md:self-center shrink-0">
@@ -1547,7 +1479,18 @@ export default function ExamOfficeStudentPanel({
                     className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm"
                   >
                     <Award size={13} />
-                    <span>สร้างไฟล์ PDF</span>
+                    <span>สร้างไฟล์ PDF (1:1 คมชัดสูง • แนะนำ)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.print();
+                    }}
+                    className="flex items-center gap-1.5 bg-neutral-950 hover:bg-neutral-850 text-white px-4 py-2.5 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm"
+                  >
+                    <Printer size={13} />
+                    <span>พิมพ์ผ่านเบราว์เซอร์ทั่วไป</span>
                   </button>
                 </div>
               </div>
@@ -1561,14 +1504,18 @@ export default function ExamOfficeStudentPanel({
                       <span>🎨</span> สีพื้นหลังบัตรประจำตัว (Background Theme Color)
                     </h5>
 
+                    <p className="text-slate-500 text-[10.5px] font-sans leading-relaxed">
+                      ปรับแต่งเปลี่ยนสีธีมพื้นหลังของบัตรประจำตัวการช่างตามที่คุณต้องการ โครงสร้าง ข้อมูลส่วนตัว และตำแหน่งจะยังคงความถูกต้องตามระเบียบสถาบันอย่างเสถียร
+                    </p>
+
                     {/* Themes list selection grid */}
                     <div className="grid grid-cols-1 gap-2 pt-1">
                       {[
-                        { key: 'minimal', label: 'Swiss Light', color: 'bg-white border-neutral-300 text-neutral-900 border shadow-xs' },
-                        { key: 'navy', label: 'Dark Navy', color: 'bg-slate-900 border-indigo-505 text-white' },
-                        { key: 'dark', label: 'Stealth Black', color: 'bg-zinc-950 border-orange-505 shadow-sm text-white' },
-                        { key: 'emerald', label: 'Emerald Tech', color: 'bg-emerald-950 border-emerald-500 text-white' },
-                        { key: 'gold', label: 'Security Gold', color: 'bg-[#241f12] border-yellow-500 text-yellow-105' }
+                        { key: 'minimal', label: 'Swiss Light (สีขาวราชการถนอมสายตา)', color: 'bg-white border-neutral-300 text-neutral-900 border shadow-xs' },
+                        { key: 'navy', label: 'Dark Navy (น้ำเงินเข้มหรูหราประจำการ)', color: 'bg-slate-900 border-indigo-505 text-white' },
+                        { key: 'dark', label: 'Stealth Black (ดำคาร์บอนพรีเมียมเข้มข่าว)', color: 'bg-zinc-950 border-orange-505 shadow-sm text-white' },
+                        { key: 'emerald', label: 'Emerald Tech (เขียวมรกตเทคโนโลยีชั้นสูง)', color: 'bg-emerald-950 border-emerald-500 text-white' },
+                        { key: 'gold', label: 'Security Gold (สีดำทองประดับเกียรติยศชั้นเอก)', color: 'bg-[#241f12] border-yellow-500 text-yellow-105' }
                       ].map(t => (
                         <button
                           key={t.key}
@@ -1588,7 +1535,14 @@ export default function ExamOfficeStudentPanel({
 
                 {/* ID Card Display previews col */}
                 <div className="xl:col-span-7 flex flex-col gap-5 items-center justify-center border-l border-slate-200/50 pl-2 xl:pl-6 min-h-[300px]">
+                  <h5 className="font-bold text-slate-800 text-[10.5px] uppercase tracking-wide self-start flex items-center gap-1 select-none">
+                    <span>✨</span> ตัวอย่างจำลองความแม่นยำสูง (LIVE DESIGN ACCURACY PREVIEW)
+                  </h5>
+
                   <div className="flex flex-col items-center justify-center w-full py-4 animate-fade-in">
+                    <span className="text-[9px] font-black uppercase text-[#F59E0B] tracking-wider mb-3 block bg-[#0F172A] px-3 py-1 rounded-full border border-yellow-500/10">
+                      VERTICAL PORTRAIT PASS • แนวตั้งหน้าเดียวพร้อมคิวอาร์โค้ดสแกน
+                    </span>
                     {renderIdCardVertical('screen')}
                   </div>
                 </div>
@@ -1647,18 +1601,6 @@ export default function ExamOfficeStudentPanel({
                 .physical-card-vertical {
                   width: 53.98mm !important;
                   height: 85.6mm !important;
-                  border: 0.5px solid #d1d5db !important;
-                  border-radius: 3.18mm !important;
-                  box-sizing: border-box !important;
-                  page-break-inside: avoid !important;
-                  page-break-after: avoid !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                  margin: auto !important;
-                }
-                .physical-card {
-                  width: 85.6mm !important;
-                  height: 53.98mm !important;
                   border: 0.5px solid #d1d5db !important;
                   border-radius: 3.18mm !important;
                   box-sizing: border-box !important;
@@ -1854,7 +1796,7 @@ export default function ExamOfficeStudentPanel({
             )}
 
             {/* If EXAM DEPT: SCHEDULE EXAMS & GRADES */}
-            {(isExam && instActionTab === 'exam') && (
+            {isExam && (
               <div className="space-y-6">
                 
                 {/* 1. Schedule Exam */}
@@ -2052,8 +1994,8 @@ export default function ExamOfficeStudentPanel({
               </div>
             )}
 
-            {/* If STUDENT or ((INSTRUCTOR or OFFICE or EXAM) with 'room' subtab): SUBMIT ROOM REQUEST OR RECORD DIRECT USAGE */}
-            {(isStudent || ((isInstructor || isOffice || isExam) && instActionTab === 'room')) && (
+            {/* If STUDENT or ((INSTRUCTOR or OFFICE) with 'room' subtab): SUBMIT ROOM REQUEST OR RECORD DIRECT USAGE */}
+            {(isStudent || ((isInstructor || isOffice) && instActionTab === 'room')) && (
               <div className="space-y-6">
                 {/* Switcher pills */}
                 <div className="flex gap-2 p-1 bg-neutral-100 rounded-lg w-full max-w-md no-print">
@@ -2403,158 +2345,70 @@ export default function ExamOfficeStudentPanel({
                 </div>
               )}
 
-              {/* Manual input borrowing & selection Form */}
-              <div className="space-y-4 mt-6">
-                <div className="p-4 border border-slate-200 rounded-md bg-white space-y-4 shadow-2xs">
-                  <h4 className="font-sans font-bold text-xs text-neutral-800 uppercase border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                    <span>1. เลือกและเพิ่มเครื่องมือลงรายการที่จะยืม (Select & Add Tools)</span>
-                    <span className="text-[10px] text-zinc-500 font-normal normal-case">ท่านสามารถเพิ่มได้หลายรายการ</span>
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-neutral-700 mb-1">รหัสคิวอาร์โค้ด / บาร์โค้ดอุปกรณ์ *</label>
-                      <div className="flex gap-2">
-                        <input
-                          id="toolCodeManualInput"
-                          type="text"
-                          placeholder="เช่น AMT-TL-001 (หรือเลือกจากโค้ดสแกนจำลองด้านบน)"
-                          value={targetCode}
-                          onChange={(e) => {
-                            setTargetCode(e.target.value);
-                            const match = equipments.find(eq => eq.code.toLowerCase() === e.target.value.toLowerCase().trim());
-                            setScannedTool(match || null);
-                          }}
-                          className="flex-1 border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-sm uppercase"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-neutral-700 mb-1">จำนวนที่ต้องการยืม (QTY EA) *</label>
-                      <div className="flex gap-2">
-                        <input
-                          id="borrowQtyInput"
-                          type="number"
-                          min={1}
-                          value={borrowQty}
-                          onChange={(e) => setBorrowQty(e.target.value)}
-                          className="w-24 border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-sm"
-                        />
-                        <button
-                          id="addToolToCartBtn"
-                          type="button"
-                          onClick={handleAddToBorrowCart}
-                          className="flex-1 bg-neutral-950 text-white font-sans font-bold hover:bg-neutral-850 px-4 py-2 rounded text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <span>+ เพิ่มลงรายการยืม</span>
-                        </button>
-                      </div>
-                    </div>
+              {/* Manual input borrowing Form */}
+              <form onSubmit={handleBorrowSubmit} className="space-y-4 mt-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">รหัสคิวอาร์โค้ดอุปกรณ์ *</label>
+                    <input
+                      id="toolCodeManualInput"
+                      type="text"
+                      required
+                      placeholder="เช่น AMT-TL-001"
+                      value={targetCode}
+                      onChange={(e) => {
+                        setTargetCode(e.target.value);
+                        const match = equipments.find(eq => eq.code.toLowerCase() === e.target.value.toLowerCase().trim());
+                        setScannedTool(match || null);
+                      }}
+                      className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-sm uppercase"
+                    />
                   </div>
-
-                  {scannedTool && (
-                    <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-md flex justify-between items-center text-xs">
-                      <div>
-                        <p className="font-sans font-bold text-neutral-950">{scannedTool.toolName}</p>
-                        <p className="text-[9px] text-neutral-500 font-mono">P/N: {scannedTool.partNumber} | ชั้นวาง: {scannedTool.location}</p>
-                      </div>
-                      {(() => {
-                        const totalBorrowed = borrowRecords
-                          .filter(r => r.equipmentCode === scannedTool.code && r.status !== 'Returned')
-                          .reduce((sum, r) => sum + r.qty, 0);
-                        const available = scannedTool.qty - totalBorrowed;
-                        return (
-                          <span className={`font-sans font-bold text-white text-[10px] px-2 py-1 rounded ${available > 0 ? 'bg-neutral-950' : 'bg-rose-600'}`}>
-                            เหลือในสต๊อก: {available} {available > 0 ? 'พร้อมยืม' : 'ของหมดคลัง'}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">จำนวนที่ยืม (QTY EA) *</label>
+                    <input
+                      id="borrowQtyInput"
+                      type="number"
+                      min={1}
+                      required
+                      value={borrowQty}
+                      onChange={(e) => setBorrowQty(parseInt(e.target.value) || 1)}
+                      className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-sm"
+                    />
+                  </div>
                 </div>
 
-                {/* Main checkout form (Cart items + Purpose + Signature) */}
-                <form onSubmit={handleBorrowSubmit} className="space-y-4">
-                  {/* Cart Items List */}
-                  <div className="p-4 border border-slate-200 rounded-md bg-white space-y-3 shadow-2xs">
-                    <h4 className="font-sans font-bold text-xs text-neutral-800 uppercase border-b border-slate-100 pb-1.5">
-                      2. รายการเครื่องมือช่างที่เตรียมยืมระบบ ({borrowCart.length} รายการ)
-                    </h4>
-                    {borrowCart.length === 0 ? (
-                      <div className="text-center py-6 text-neutral-450 italic text-xs">
-                        ยังไม่มีอุปกรณ์ในรายการ โปรดสแกนหรือใส่รหัสด้านบนแล้วกด "เพิ่มลงรายการยืม"
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-56 overflow-y-auto">
-                        {borrowCart.map((item) => (
-                          <div key={item.code} className="flex items-center justify-between p-2.5 bg-neutral-50 border border-neutral-150 rounded text-xs gap-3 font-sans">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-sans font-bold text-neutral-900 truncate">{item.toolName}</p>
-                              <p className="text-[10px] text-zinc-500 font-mono font-bold uppercase">{item.code}</p>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <label className="text-[10px] text-neutral-600 font-bold">จำนวนที่จะยืม:</label>
-                              <input
-                                type="number"
-                                min={1}
-                                value={item.qty}
-                                onChange={(e) => handleUpdateCartItemQty(item.code, parseInt(e.target.value) || 1)}
-                                className="w-16 border border-neutral-300 px-2 py-1 rounded focus:outline-none text-center font-mono text-xs"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFromBorrowCart(item.code)}
-                              className="text-rose-600 hover:text-rose-850 p-1 font-sans font-bold cursor-pointer"
-                              title="ลบ"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Purpose & Signature checkout fields */}
-                  <div className="p-4 border border-slate-200 rounded-md bg-white space-y-4 shadow-2xs">
-                    <h4 className="font-sans font-bold text-xs text-neutral-800 uppercase border-b border-slate-100 pb-1.5">
-                      3. รายละเอียดและลงนามเบิกใช้ (Authorization & Borrow Details)
-                    </h4>
+                {scannedTool && (
+                  <div className="p-3 bg-neutral-100 border border-neutral-300 rounded-md flex justify-between items-center">
                     <div>
-                      <label className="block text-[10px] font-bold text-neutral-700 mb-1">วัตถุประสงค์ในการขอยืมเครื่องมือ / JOB Card No. *</label>
-                      <input
-                        id="borrowPurposeInput"
-                        type="text"
-                        required
-                        placeholder="ระบุรหัส JOB Card หรือวัตถุประสงค์เพื่อยืนยันประวัติสืบย้อนกลับ เช่น JOB Card No. 1234"
-                        value={borrowPurpose}
-                        onChange={(e) => setBorrowPurpose(e.target.value)}
-                        className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs text-neutral-900 placeholder:text-neutral-400"
-                      />
+                      <p className="font-sans font-bold text-neutral-950">{scannedTool.toolName}</p>
+                      <p className="text-[9px] text-neutral-500 font-mono">P/N: {scannedTool.partNumber} | ชั้นวาง: {scannedTool.location}</p>
                     </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-neutral-800">เซ็นรับรอง *</label>
-                      <SignaturePad onSave={(data) => setBorrowSignature(data)} placeholder="วาดลายเซ็นของคุณด้านล่าง..." />
-                    </div>
-
-                    <div className="flex justify-end border-t pt-2.5">
-                      <button 
-                        id="executeBorrowBtn" 
-                        type="submit" 
-                        disabled={borrowCart.length === 0}
-                        className={`font-sans font-extrabold px-6 py-2.5 rounded text-xs shadow-xs cursor-pointer text-white transition-all ${
-                          borrowCart.length === 0 
-                            ? 'bg-neutral-300 cursor-not-allowed text-neutral-500' 
-                            : 'bg-neutral-950 hover:bg-neutral-850'
-                        }`}
-                      >
-                        เซ็นลายมืออนุมัติเบิกจ่ายทั้งหมด ({borrowCart.length} รายการ)
-                      </button>
-                    </div>
+                    {(() => {
+                      const totalBorrowed = borrowRecords
+                        .filter(r => r.equipmentCode === scannedTool.code && r.status !== 'Returned')
+                        .reduce((sum, r) => sum + r.qty, 0);
+                      const available = scannedTool.qty - totalBorrowed;
+                      return (
+                        <span className={`font-sans font-bold text-white text-[10px] px-2 py-1 rounded ${available > 0 ? 'bg-neutral-950' : 'bg-rose-600'}`}>
+                          เหลือในสต๊อก: {available} {available > 0 ? 'พร้อมยืม' : 'ของหมดคลัง'}
+                        </span>
+                      );
+                    })()}
                   </div>
-                </form>
-              </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-neutral-800">เซ็นรับรองความปลอดภัยและยืมเครื่องมือคืนครบตามกติกา *</label>
+                  <SignaturePad onSave={(data) => setBorrowSignature(data)} placeholder="วาดลายเซ็นของคุณด้านล่าง..." />
+                </div>
+
+                <div className="flex justify-end border-t pt-2">
+                  <button id="executeBorrowBtn" type="submit" className="bg-neutral-950 text-white font-extrabold px-6 py-2 rounded hover:bg-neutral-800 text-xs shadow-sm cursor-pointer">
+                    เซ็นลายมืออนุมัติเบิกจ่าย
+                  </button>
+                </div>
+              </form>
             </div>
 
             {/* Display borrowed tools list (own and buddy roster) */}
@@ -2581,7 +2435,6 @@ export default function ExamOfficeStudentPanel({
                       <th className="py-2.5 px-2">วันเวลาที่ยืม</th>
                       <th className="py-2.5 px-2">คิวอาร์โค้ด</th>
                       <th className="py-2.5 px-2">ชื่ออุปกรณ์ช่างอากาศยาน</th>
-                      <th className="py-2.5 px-2">วัตถุประสงค์/JOB Card</th>
                       <th className="py-2.5 px-2">ผู้ถือเครื่องมือขณะนี้</th>
                       <th className="py-2.5 px-2 text-center">หน่วย (EA)</th>
                       <th className="py-2.5 px-2 text-center">คืนอุปกรณ์</th>
@@ -2597,7 +2450,6 @@ export default function ExamOfficeStudentPanel({
                             <td className="py-2.5 px-2 font-mono text-neutral-550">{rec.borrowDate}</td>
                             <td className="py-2.5 px-2 font-mono font-bold">{rec.equipmentCode}</td>
                             <td className="py-2.5 px-2 font-bold text-neutral-900">{rec.toolName}</td>
-                            <td className="py-2.5 px-2 font-medium text-neutral-700">{rec.purpose || '-'}</td>
                             <td className="py-2.5 px-2 font-medium">
                               {isBorrowedByMe ? (
                                 <span className="bg-neutral-950 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
@@ -2634,7 +2486,7 @@ export default function ExamOfficeStudentPanel({
                       })}
                     {borrowRecords.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="py-6 text-center text-neutral-450 italic">
+                        <td colSpan={6} className="py-6 text-center text-neutral-450 italic">
                           ไม่มีการยืมใช้เครื่องมือในบัญชีขณะนี้
                         </td>
                       </tr>

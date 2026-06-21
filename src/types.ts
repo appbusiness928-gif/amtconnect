@@ -94,7 +94,6 @@ export interface BorrowRecord {
   returnSignature?: string;
   checkSignature?: string;
   checkerName?: string;
-  purpose?: string;
 }
 
 export interface ClassSchedule {

@@ -271,74 +271,6 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     return;
   }
 
-  // Pre-open a blank window synchronously inside the user-initiated click handler to completely bypass browser popup blockers!
-  let newWindow: Window | null = null;
-  try {
-    newWindow = window.open('', '_blank');
-    if (newWindow) {
-      newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>กำลังจัดเตรียมไฟล์ PDF...</title>
-          <meta charset="utf-8">
-          <style>
-            body {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              height: 100vh;
-              margin: 0;
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-              background-color: #f8fafc;
-              color: #0f172a;
-            }
-            .container {
-              text-align: center;
-              padding: 24px;
-              max-width: 420px;
-            }
-            .spinner {
-              width: 48px;
-              height: 48px;
-              border: 4px solid #0284c7;
-              border-top-color: transparent;
-              border-radius: 50%;
-              animation: spin 1s linear infinite;
-              margin: 0 auto 20px;
-            }
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-            .title {
-              font-size: 17px;
-              font-weight: 700;
-              margin-bottom: 8px;
-              color: #1e293b;
-            }
-            .subtitle {
-              font-size: 13.5px;
-              color: #64748b;
-              line-height: 1.5;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="spinner"></div>
-            <div class="title">กำลังจัดเตรียมเอกสาร PDF สถาบัน...</div>
-            <div class="subtitle">ระบบกำลังเรนเดอร์กราฟิกและแปลงข้อมูลเพื่อแสดงในหน้านี้ กรุณารอสักครู่...</div>
-          </div>
-        </body>
-        </html>
-      `);
-      newWindow.document.close();
-    }
-  } catch (e) {
-    console.warn('Failed to pre-open window:', e);
-  }
-
   Swal.fire({
     title: 'กำลังจัดเตรียมไฟล์ PDF...',
     html: `
@@ -429,17 +361,9 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
   }
 
   try {
-    const isA4ZeroMargin = element.classList.contains('full-a4-portrait') || 
-                           element.classList.contains('print-landscape') || 
-                           element.classList.contains('print-landscape-mo001') ||
-                           element.innerHTML.includes('TLTC-MO-033') || 
-                           element.innerHTML.includes('TLTC-MO-034') || 
-                           element.innerHTML.includes('TLTC-MO-001') ||
-                           filename.includes('ขออนุญาตใช้ห้อง') || 
-                           filename.includes('TLTC-MO-034') || 
-                           filename.includes('TLTC-MO-001');
+    const isA4FullPortrait = element.classList.contains('full-a4-portrait') || element.innerHTML.includes('TLTC-MO-033') || filename.includes('ขออนุญาตใช้ห้อง');
     const opt = {
-      margin:       isA4ZeroMargin ? 0 : (orientation === 'portrait' ? [12, 10, 12, 10] : [10, 10, 10, 10]),
+      margin:       isA4FullPortrait ? 0 : (orientation === 'portrait' ? [12, 10, 12, 10] : [10, 10, 10, 10]),
       filename:     filename,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { 
@@ -456,19 +380,22 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     
     // Generate direct blob url for live view/link
     const blobUrl = await worker.output('bloburl');
+    
+    // Trigger local download
+    await worker.save();
 
     Swal.fire({
-      title: 'จัดเตรียมเอกสารสำเร็จ!',
+      title: 'จัดเตรียมเอกสารและดาวน์โหลดสำเร็จ!',
       html: `
         <div class="text-center font-sans space-y-3.5 pt-2">
-          <p class="text-sm text-neutral-600">ได้ทำการจัดทำรูปเล่ม PDF และเปิดแสดงในแท็บใหม่เรียบร้อยแล้ว</p>
+          <p class="text-sm text-neutral-600">ได้ทำการจัดทำรูปเล่ม PDF และทำการดาวน์โหลดเข้าสู่เครื่องของท่านเรียบร้อยแล้ว</p>
           
           <div class="p-3 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-emerald-100">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            สถานะ: จัดทำลิงก์เอกสาร PDF สำเร็จ!
+            สถานะ: ดาวน์โหลดเอกสาร PDF สำเร็จ!
           </div>
           
-          <p class="text-[11px] text-neutral-400">กรณีที่หน้าต่างใหม่ไม่ปรากฏขึ้นมา หรือคุณต้องการเปิดแสดงเอกสารอีกรอบ กรุณาคลิกที่ปุ่มด้านล่างเพื่อเข้าดูทันที</p>
+          <p class="text-[11px] text-neutral-400">กรณีที่ดาวน์โหลดไม่เริ่มทำงานโดยอัตโนมัติ หรือท่านต้องการเปิดดูผ่านเว็บเบราว์เซอร์ กรุณาคลิกปุ่มด้านล่างเพื่อแสดงเอกสาร</p>
           
           <a href="${blobUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-all text-xs cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -488,28 +415,14 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
       }
     });
     
-    // Auto-open in tab by modifying location of pre-opened tab or using window.open as fallback
-    if (newWindow) {
-      try {
-        newWindow.location.href = blobUrl;
-      } catch (e) {
-        console.warn('Failed setting pre-opened tab location, falling back to window.open:', e);
-        window.open(blobUrl, '_blank');
-      }
-    } else {
-      try {
-        window.open(blobUrl, '_blank');
-      } catch (e) {
-        console.warn('Auto popup blocked:', e);
-      }
+    // Auto-open in tab
+    try {
+      window.open(blobUrl, '_blank');
+    } catch (e) {
+      console.warn('Auto popup blocked:', e);
     }
   } catch (error: any) {
     console.error('PDF generation error:', error);
-    if (newWindow) {
-      try {
-        newWindow.close();
-      } catch (e) {}
-    }
     Swal.fire({
       title: 'เกิดข้อผิดพลาด',
       text: 'ไม่สามารถสร้างไฟล์ PDF มินิลิงก์ได้: ' + error.message,
@@ -680,44 +593,6 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 no-print modal-print-ready animate-fade-in">
-      <style>{`
-        @media print {
-          @page {
-            size: portrait;
-            margin: 0mm !important;
-          }
-          html, body, #root {
-            width: 100vw !important;
-            height: 100vh !important;
-            overflow: hidden !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            color: black !important;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          .custom-print-card, .custom-print-card * {
-            visibility: visible !important;
-          }
-          .custom-print-card {
-            position: fixed !important;
-            left: 50% !important;
-            top: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 53.98mm !important;
-            height: 85.6mm !important;
-            border: 0.5px solid #d1d5db !important;
-            border-radius: 3.18mm !important;
-            box-sizing: border-box !important;
-            page-break-inside: avoid !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            z-index: 9999999 !important;
-          }
-        }
-      `}</style>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden flex flex-col border border-neutral-200">
         <div className="bg-neutral-950 text-white p-3 flex items-center justify-between no-print relative z-50">
           <span className="text-xs font-mono font-bold">AMT CONNECT ID CARD ENGINE</span>
@@ -732,23 +607,23 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
 
         <div className="p-8 bg-neutral-100 flex-1 flex flex-col items-center justify-center">
           {/* Vertical ID Badge Card Layout */}
-          <div className="w-[53.98mm] h-[85.6mm] bg-white border border-neutral-400 rounded-lg shadow-md p-3 flex flex-col justify-between items-center relative text-center print-card custom-print-card overflow-hidden" style={{ boxSizing: 'border-box' }}>
+          <div className="w-[60mm] h-[95mm] bg-white border border-neutral-400 rounded-lg shadow-md p-4 flex flex-col justify-between items-center relative text-center print-card overflow-hidden">
             
             {/* Header Accent block */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-neutral-950" />
             
             {/* School Brand */}
-            <div className="mt-1 w-full">
-              <h4 className="font-sans font-extrabold text-[10px] uppercase tracking-wider text-neutral-950 font-semibold leading-tight">
+            <div className="mt-2 w-full">
+              <h4 className="font-sans font-extrabold text-[11px] uppercase tracking-wider text-neutral-950 font-semibold">
                 AMT CONNECT
               </h4>
-              <p className="font-sans text-[6.5px] text-neutral-500 font-medium leading-tight mt-0.5">สถาบันฝึกอบรมช่างบำรุงรักษาอากาศยาน</p>
-              <p className="font-mono text-[5.5px] text-neutral-400 mt-0.5 leading-tight uppercase">AIRCRAFT MAINTENANCE TRAINING CENTER</p>
+              <p className="font-sans text-[7px] text-neutral-500 font-medium">สถาบันฝึกอบรมช่างบำรุงรักษาอากาศยาน</p>
+              <p className="font-mono text-[6px] text-neutral-400 mt-0.5">AIRCRAFT MAINTENANCE TRAINING CENTER</p>
             </div>
 
             {/* Photo */}
             <div className="my-1.5 shrink-0">
-              <div className="w-[18mm] h-[22.5mm] border-2 border-neutral-950 rounded-xs overflow-hidden bg-neutral-100 relative shadow-xs">
+              <div className="w-20 h-24 border-2 border-neutral-950 rounded-xs overflow-hidden bg-neutral-100 relative">
                 {user.photoUrl ? (
                   <img
                     src={user.photoUrl}
@@ -757,7 +632,7 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[8px] text-neutral-400 font-sans leading-tight">
+                  <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-400 font-sans">
                     รูปถ่ายนักศึกษา
                   </div>
                 )}
@@ -766,31 +641,26 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
 
             {/* User Info Details */}
             <div className="w-full">
-              <h3 className="font-sans font-bold text-[11.5px] text-neutral-900 whitespace-normal break-words leading-tight px-0.5 text-center">
-                {user.firstName} {user.lastName}
+              <h3 className="font-sans font-bold text-xs text-neutral-950 truncate">
+                {user.firstNameEn && user.lastNameEn ? `${user.firstNameEn} ${user.lastNameEn}` : `${user.firstName} ${user.lastName}`}
               </h3>
-              {(user.firstNameEn || user.lastNameEn) && (
-                <p className="font-mono text-[8px] text-neutral-600 uppercase font-semibold tracking-tight leading-tight mt-0.5 text-center px-0.5">
-                  {user.firstNameEn} {user.lastNameEn}
-                </p>
-              )}
-              <p className="font-sans text-[8.5px] font-bold text-neutral-600 mt-1 leading-tight">
+              <p className="font-sans text-[9px] font-bold text-neutral-600 uppercase tracking-wide">
                 ตำแหน่ง: {user.role}
               </p>
-              <p className="font-mono text-[8px] text-neutral-500 font-bold mt-0.5 leading-none">
+              <p className="font-mono text-[9px] text-neutral-500 font-bold mt-0.5">
                 ID: {user.id}
               </p>
             </div>
 
             {/* QR Code Section */}
-            <div className="my-1 select-none flex flex-col items-center shrink-0">
+            <div className="my-2 select-none flex flex-col items-center">
               <img 
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + user.id)}`} 
                 alt="QR Verification" 
-                className="w-13 h-13 border border-neutral-300 p-0.5 bg-white shadow-xs rounded-xs" 
+                className="w-18 h-18 border border-neutral-300 p-1 bg-white shadow-xs rounded-md" 
                 referrerPolicy="no-referrer"
               />
-              <span className="text-[5px] text-neutral-400 font-mono tracking-widest mt-0.5 uppercase font-bold leading-none">VERIFY QR CODE</span>
+              <span className="text-[6.5px] text-neutral-400 font-mono tracking-widest mt-1 uppercase font-bold">VERIFY QR CODE</span>
             </div>
 
             {/* Signature Area */}
@@ -799,12 +669,12 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
                 <img
                   src={user.signature}
                   alt="ลายมือชื่อ"
-                  className="h-4 object-contain pointer-events-none filter grayscale mix-blend-multiply"
+                  className="h-5 object-contain pointer-events-none filter grayscale mix-blend-multiply"
                 />
               ) : (
-                <div className="h-4 text-[7px] text-neutral-300 font-sans italic flex items-center">ไม่มีลายเซ็น</div>
+                <div className="h-5 text-[8px] text-neutral-300 font-sans italic">ไม่มีลายเซ็น</div>
               )}
-              <span className="text-[6px] text-neutral-400 font-sans mt-0.5 leading-none">ลายมือชื่อผู้ถือบัตร</span>
+              <span className="text-[7px] text-neutral-400 font-sans mt-0.5">ลายมือชื่อผู้ถือบัตร</span>
             </div>
 
             {/* Footer stamp */}
@@ -888,43 +758,6 @@ function formatThaiDate(dateStr: string): string {
     return `${day} ${monthName} ${thYearShort}`;
   }
   return dateStr;
-}
-
-// Helper to convert Date String into classic signature Thai date string (e.g. 21 / มิ.ย. / 2569)
-function formatSignatureThaiDate(dateStr: string): string {
-  if (!dateStr) return '....... / ....... / .......';
-  
-  let day = NaN;
-  let month = NaN;
-  let year = NaN;
-
-  if (dateStr.includes('-')) {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      year = parseInt(parts[0], 10);
-      month = parseInt(parts[1], 10);
-      day = parseInt(parts[2], 10);
-    }
-  } else if (dateStr.includes('/')) {
-    const parts = dateStr.split('/');
-    if (parts.length === 3) {
-      day = parseInt(parts[0], 10);
-      month = parseInt(parts[1], 10);
-      year = parseInt(parts[2], 10);
-    }
-  }
-
-  const thaiMonthsShort = [
-    'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
-    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
-  ];
-
-  if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-    const fullYear = year < 2400 ? year + 543 : year;
-    const monthName = month >= 1 && month <= 12 ? thaiMonthsShort[month - 1] : '...';
-    return `${day}  /  ${monthName}  /  ${fullYear}`;
-  }
-  return '....... / ....... / .......';
 }
 
 export function getMaintenanceManagerInfo() {
@@ -1158,7 +991,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                     <ThalangLogo className="w-14 h-14 mx-auto" />
                   </td>
                   <td className="border border-black p-2 w-[58%] text-center align-middle font-sans font-bold text-[11px] uppercase tracking-wide">
-                    TLTC AIRCRAFT MAINTENANCE<br/>TRAINING ORGANIZATION
+                    TLTC AIRCRAFT MAINTENANCE TRAINING ORGANIZATION
                   </td>
                   <td className="border border-black p-2 w-[30%] text-center align-middle font-sans font-semibold text-[11px]">
                     Maintenance Office
@@ -1359,14 +1192,14 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                 </div>
 
                 <div className="flex items-baseline w-full justify-center gap-1 pt-1.5 font-mono text-[11px] text-blue-850 font-bold">
-                  {formatSignatureThaiDate(request.date)}
+                  {formatThaiDate(request.date)}
                 </div>
               </div>
             </div>
 
             {/* Readiness Opinion Box modeled on Photo 1 bottom region */}
             <div className="border border-black p-4 space-y-3 my-5 text-black font-sans text-xs bg-neutral-50/20">
-              <h4 className="font-bold">ความคิดเห็นผู้ตรวจสอบความพร้อมของห้อง</h4>
+              <h4 className="font-bold underline">ความคิดเห็นผู้ตรวจสอบความพร้อมของห้อง</h4>
               
               <div className="space-y-3 pl-3">
                 <div className="flex items-center">
@@ -1420,7 +1253,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                   <div className="flex items-baseline w-full justify-center">
                     <span>( </span>
                     <span className="flex-1 text-blue-850 font-bold px-1 font-serif text-[13.5px] italic">
-                      {request.maintenanceApproved === 'Approved' ? (request.maintenanceOfficerName || (managerInfo ? managerInfo.fullName : '')) : ''}
+                      {request.maintenanceOfficerName || (managerInfo ? managerInfo.fullName : '')}
                     </span>
                     <span> )</span>
                   </div>
@@ -1430,7 +1263,7 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
                   </div>
 
                   <div className="flex items-baseline w-full justify-center gap-1 pt-1.5 font-mono text-[11px] text-blue-850 font-bold">
-                    {request.maintenanceApproved === 'Approved' ? formatSignatureThaiDate(request.date) : '....... / ....... / .......'}
+                    {request.maintenanceApproved === 'Approved' ? formatThaiDate(request.date) : '....... / ....... / .......'}
                   </div>
                 </div>
               </div>
@@ -1438,8 +1271,8 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
 
             {/* Document Footer */}
             <div className="flex justify-between items-center text-[10px] text-neutral-500 font-sans mt-6 pt-2 border-t border-neutral-300 select-none">
-              <span className="italic">Effective date 23/04/2025, Rev.00</span>
-              <span className="font-bold italic">Page 1 of 1</span>
+              <span>Effective date {formatEffectiveDate(request.maintenanceCertifiedDate)}, Rev.00</span>
+              <span className="font-semibold">Page 1 of 1</span>
             </div>
           </div>
         </div>
@@ -1455,9 +1288,8 @@ export function RoomRequestDoc({ request, onClose, onRecordUsage, currentUser }:
           </button>
 
           <button
-            onClick={handleDownloadPDF}
-            disabled={isWorking}
-            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-emerald-650 hover:bg-emerald-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
           >
             <Printer size={13} />
             <span>พิมพ์เอกสารนี้ (Print)</span>
@@ -1566,7 +1398,7 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                     <ThalangLogo className="w-14 h-14 mx-auto" />
                   </td>
                   <td className="border border-black p-2 w-[65%] text-center align-middle font-sans font-bold text-[11px] uppercase tracking-wide">
-                    TLTC AIRCRAFT MAINTENANCE<br/>TRAINING ORGANIZATION
+                    TLTC AIRCRAFT MAINTENANCE TRAINING ORGANIZATION
                   </td>
                   <td className="border border-black p-1 w-[25%] text-center align-middle font-sans font-semibold text-[10.5px]">
                     Maintenance Office
@@ -1586,13 +1418,12 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
             {/* List Table print layout modeled closely on Photo 2 */}
             <table className="w-full border-collapse border border-neutral-950 text-center font-sans mt-2">
               <thead>
-                <tr className="bg-neutral-100/50 font-sans font-bold text-[11px] text-black">
-                  <th className="border border-neutral-950 p-2 w-[10%]">ว/ด/ป</th>
-                  <th className="border border-neutral-950 p-2 w-[15%]">ห้อง</th>
-                  <th className="border border-neutral-950 p-2 w-[18%]">ผู้เข้าใช้ห้อง</th>
-                  <th className="border border-neutral-950 p-2 w-[32%] text-center">รายงานการใช้ห้อง<br/><span className="text-[10px] font-normal">(สิ่งที่ต้องการให้พัฒนา)</span></th>
-                  <th className="border border-neutral-950 p-1.5 w-[13%]">Maintenance<br/>Officer</th>
-                  <th className="border border-neutral-950 p-2 w-[12%]">หมายเหตุ</th>
+                <tr className="bg-neutral-100/50 font-bold text-[11px] text-black">
+                  <th className="border border-neutral-950 p-2.5 w-[11%]">ว/ด/ป</th>
+                  <th className="border border-neutral-950 p-2.5 w-[16%]">ห้อง</th>
+                  <th className="border border-neutral-950 p-2.5 w-[18%]">ผู้เข้าใช้ห้อง</th>
+                  <th className="border border-neutral-950 p-2.5 w-[37%] text-left pl-4">รายงานการใช้ห้อง (สิ่งที่ต้องการให้พัฒนา)</th>
+                  <th className="border border-neutral-950 p-2.5 w-[18%]">Maintenance Officer (ผู้ตรวจรับ)</th>
                 </tr>
               </thead>
               <tbody>
@@ -1601,16 +1432,16 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                   return (
                     <tr key={rec.id} className="text-[11px] h-12">
                       {/* Date */}
-                      <td className="border border-neutral-950 p-2 font-bold text-blue-850 font-serif text-[12px] italic select-none">
+                      <td className="border border-neutral-950 p-2.5 font-bold text-blue-800 font-serif text-[12px] italic select-none">
                         {formattedDate}
                       </td>
                       {/* Room */}
-                      <td className="border border-neutral-950 p-2 font-semibold text-blue-850 font-sans select-none">
+                      <td className="border border-neutral-950 p-2.5 font-semibold text-blue-800 font-sans select-none">
                         {rec.room}
                       </td>
                       {/* Requester Signature & typed name inside parentheses */}
                       <td className="border border-neutral-950 p-1">
-                        <div className="flex flex-col items-center justify-center leading-none text-blue-850">
+                        <div className="flex flex-col items-center justify-center leading-none text-blue-800">
                           {rec.requesterSignature ? (
                             <img 
                               src={rec.requesterSignature} 
@@ -1620,27 +1451,27 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                             />
                           ) : (
                             <span className="font-serif italic font-black text-[13.5px] -rotate-2 select-none">
-                              {rec.requesterName ? rec.requesterName.split(' ')[0] : ''}
+                              {rec.requesterName ? rec.requesterName.split(' ')[0] : 'ไซฮัน'}
                             </span>
                           )}
                           <span className="text-[8.5px] text-neutral-500 mt-1.5 pb-0.5">
-                            ({rec.requesterName || ''})
+                            ({rec.requesterName || 'นายไซฮัน ซาราบรรณ'})
                           </span>
                         </div>
                       </td>
                       {/* Report / Feedback */}
-                      <td className="border border-neutral-950 p-2 text-left pl-3 text-blue-850 font-serif text-[12.5px] italic font-semibold select-none">
-                        {rec.report || ''}
+                      <td className="border border-neutral-950 p-2.5 text-left pl-4 text-blue-800 font-serif text-[12.5px] italic font-semibold select-none">
+                        {rec.report || 'ปฏิบัติงานเรียบร้อย ทำความสะอาดห้องเรียนสมบูรณ์หลังใช้บริการ'}
                       </td>
                       {/* Maintenance Officer Signature status */}
-                      <td className="border border-neutral-950 p-2">
+                      <td className="border border-neutral-950 p-2.5">
                         {managerInfo ? (
-                          <div className="flex flex-col items-center justify-center leading-none text-blue-850 select-none">
-                            <span className="font-serif italic font-black text-[13.5px] -rotate-3 text-blue-850 scale-105 tracking-wider">
+                          <div className="flex flex-col items-center justify-center leading-none text-blue-800 select-none">
+                            <span className="font-serif italic font-black text-[14px] -rotate-3 text-blue-800 scale-105 tracking-wider">
                               {managerInfo.shortName}
                             </span>
-                            <span className="text-[8px] text-neutral-500 mt-1 pb-0.5">
-                              (M.O. Approved)
+                            <span className="text-[8.5px] text-neutral-500 mt-1 pb-0.5">
+                              (M.O. ตรวจทานเรียบร้อย)
                             </span>
                           </div>
                         ) : (
@@ -1649,31 +1480,45 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
                           </div>
                         )}
                       </td>
-                      {/* Note column */}
-                      <td className="border border-neutral-950 p-2 text-center text-blue-850">
-                        {rec.remarks || ''}
-                      </td>
                     </tr>
                   );
                 })}
-                {/* Pad empty lines to look like empty rows in notebook if records are few (up to 16 rows total) */}
-                {Array.from({ length: Math.max(0, 16 - records.length) }).map((_, i) => (
-                  <tr key={`empty-${i}`} className="text-[11px] h-[34px]">
-                    <td className="border border-neutral-950 p-2"></td>
-                    <td className="border border-neutral-950 p-2"></td>
-                    <td className="border border-neutral-950 p-2"></td>
-                    <td className="border border-neutral-950 p-2"></td>
-                    <td className="border border-neutral-950 p-2"></td>
-                    <td className="border border-neutral-950 p-2"></td>
+                {/* Pad empty lines to look like empty rows in notebook if records are few */}
+                {Array.from({ length: Math.max(0, 8 - records.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="text-[11px] h-12">
+                    <td className="border border-neutral-950 p-2.5 font-mono text-neutral-300">/......../......../</td>
+                    <td className="border border-neutral-950 p-2.5 text-neutral-300">........................</td>
+                    <td className="border border-neutral-950 p-2.5 text-neutral-300">........................</td>
+                    <td className="border border-neutral-950 p-2.5 text-left pl-4 text-neutral-300">................................................................................................................</td>
+                    <td className="border border-neutral-950 p-2.5 text-neutral-300">........................</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
+            {/* Verification End block matching Photo 2 hand-written checklist styles */}
+            <div className="mt-10 flex justify-between items-start">
+              <div className="text-[9.5px] text-neutral-500 max-w-[500px]">
+                <span className="font-semibold block">คำชี้แนะการกรอกสมุดบันทึก:</span>
+                <p>1. กรอกรายละเอียดทันทีหลังจากปฏิบัติงานเสร็จสิ้นในแต่ละช่วงวัน / คาบปฏิบัติการ</p>
+                <p>2. แจ้งเบาะแสหรือข้อบกพร่องแอร์, ระบบกำลังไฟฟ้า, เครื่องมือดับเพลิง แก่ Maintenance Officer สังเกตการซ่อมบำรุง</p>
+              </div>
+              <div className="flex flex-col items-center text-center space-y-1.5 text-black font-sans text-xs mr-4">
+                <span className="block mb-6 text-[10px] font-bold">รับรองโดย Maintenance Officer</span>
+                <div className="relative w-48 border-b border-dotted border-black flex justify-center items-center h-8">
+                  <div className="absolute text-blue-850 font-serif italic text-[15px] select-none font-black -rotate-3 pl-2 tracking-widest">
+                    {managerInfo ? managerInfo.shortName : ''}
+                  </div>
+                </div>
+                <span className="text-[10px] text-neutral-500 font-semibold">{managerInfo ? `( ${managerInfo.fullName} )` : ''}</span>
+                <span className="text-[9px] text-neutral-400">Maintenance Lead Certifier</span>
+              </div>
+            </div>
+
             {/* Footer */}
-            <div className="flex justify-between items-center text-[10.5px] text-neutral-500 font-sans mt-8 pt-2 border-t border-neutral-300 select-none">
-              <span className="italic">Effective date 23/04/2025, Rev.00</span>
-              <span className="font-bold italic">Page 1 of 1</span>
+            <div className="flex justify-between items-center text-[10.5px] text-neutral-500 font-sans mt-8 pt-3 border-t border-neutral-300 select-none">
+              <span>Effective date {formatEffectiveDate(latestCertifiedDate)}, Rev.00</span>
+              <span className="font-bold">Page 1 of 1</span>
             </div>
           </div>
         </div>
@@ -1690,9 +1535,8 @@ export function RoomUsageRecordDoc({ records, roomRequests = [], onClose }: Room
           </button>
 
           <button
-            onClick={handleDownloadPDF}
-            disabled={isWorking}
-            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-emerald-650 hover:bg-emerald-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
           >
             <Printer size={13} />
             <span>พิมพ์บันทึกการใช้ห้อง (Print)</span>
@@ -1987,9 +1831,8 @@ export function TraceabilityToolsLogDoc({ records, onClose }: TraceabilityToolsL
           </button>
 
           <button
-            onClick={handleDownloadPDF}
-            disabled={isWorking}
-            className={`flex items-center gap-1.5 ${isWorking ? 'bg-neutral-400 cursor-not-allowed' : 'bg-emerald-650 hover:bg-emerald-700'} text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer`}
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white font-sans text-xs font-bold py-2 px-4 rounded-md transition-all shadow-sm cursor-pointer"
           >
             <Printer size={13} />
             <span>พิมพ์รายงานชิ้นนี้ (Print)</span>

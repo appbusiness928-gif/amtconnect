@@ -20,11 +20,11 @@ const SPREADSHEET_ID = "1-KloNfBjgIFGgC5Ml7hzQ8oJyzF1BG5oGIKuZeNpe-g";
 
 // รายชื่อชีตและหัวข้อหลัก (มีครบถ้วนสมบูรณ์ตาม Typescript interface)
 const SHEETS_CONFIG = {
-  "Users": ["id", "photoUrl", "firstName", "lastName", "firstNameEn", "lastNameEn", "role", "signature", "email", "status", "createdAt", "batch", "password"],
+  "Users": ["id", "photoUrl", "firstName", "lastName", "role", "signature", "email", "status", "createdAt", "batch", "password"],
   "RoomRequests": ["id", "date", "timeRange", "room", "requesterId", "requesterName", "requesterRole", "department", "phone", "purpose", "signature", "maintenanceApproved", "maintenanceOfficerName", "maintenanceOfficerSignature", "maintenanceCertifiedDate", "maintenanceNote", "isRoomUsageRecordCreated"],
   "RoomUsageRecords": ["id", "date", "room", "requesterName", "report", "maintenanceOfficerStatus", "remarks"],
   "Equipment": ["no", "toolName", "partNumber", "serialNumber", "code", "qty", "location", "status", "remark", "calibrationDate"],
-  "BorrowRecords": ["id", "equipmentCode", "toolName", "borrowerId", "borrowerName", "borrowerRole", "qty", "borrowDate", "status", "returnDate", "borrowSignature", "toolLocation", "returnSignature", "checkSignature", "checkerName", "purpose"],
+  "BorrowRecords": ["id", "equipmentCode", "toolName", "borrowerId", "borrowerName", "borrowerRole", "qty", "borrowDate", "status", "returnDate", "borrowSignature", "toolLocation", "returnSignature", "checkSignature", "checkerName"],
   "Schedules": ["id", "batch", "dayOfWeek", "subjectCode", "subjectName", "startDate", "endDate", "instructorName"],
   "ExamSchedules": ["id", "batch", "subjectName", "date", "time", "room"],
   "ExamGrades": ["id", "batch", "subjectName", "round", "grades"] // grades จะเซฟเป็น JSON String ในช่องเดียว
