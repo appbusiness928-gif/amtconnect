@@ -83,6 +83,8 @@ export default function TrainingManagerPanel({
   const [searchStudentId, setSearchStudentId] = useState('');
   const [foundStudent, setFoundStudent] = useState<User | null>(null);
   const [studentSchedules, setStudentSchedules] = useState<ClassSchedule[]>([]);
+  const [scheduleSearchType, setScheduleSearchType] = useState<'batch' | 'studentId'>('batch');
+  const [selectedScheduleBatch, setSelectedScheduleBatch] = useState('');
 
   // Dynamically get cohorts based on existing student batches in the system
   const availableBatches = Array.from(
@@ -103,10 +105,15 @@ export default function TrainingManagerPanel({
 
   // Automatically adjust selected batch once options load/change
   React.useEffect(() => {
-    if (dbBatches.length > 0 && !dbBatches.includes(cohortBatch)) {
-      setCohortBatch(dbBatches[0]);
+    if (dbBatches.length > 0) {
+      if (!dbBatches.includes(cohortBatch)) {
+        setCohortBatch(dbBatches[0]);
+      }
+      if (!selectedScheduleBatch || !dbBatches.includes(selectedScheduleBatch)) {
+        setSelectedScheduleBatch(dbBatches[0]);
+      }
     }
-  }, [dbBatches, cohortBatch]);
+  }, [dbBatches, cohortBatch, selectedScheduleBatch]);
 
   // Profile Edit states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -846,78 +853,239 @@ export default function TrainingManagerPanel({
         {/* TAB 3: CHECK STUDENT SCHEDULE */}
         {activeButtonTab === 'schedules' && (
           <div className="space-y-6">
-            <h3 className="font-sans font-extrabold text-sm mb-2 border-b pb-2">
-              ตรวจสอบตารางเรียนและการเข้าเรียนรายบุคคล
+            <h3 className="font-sans font-extrabold text-sm mb-2 border-b pb-2 text-slate-850">
+              ตรวจสอบตารางเรียนและการเข้าเรียนนักศึกษา
             </h3>
 
-            <div className="flex gap-2 max-w-md">
-              <input
-                id="searchStudentIdInput"
-                type="text"
-                placeholder="ระบุรหัสนักศึกษา (เช่น 67010214)"
-                value={searchStudentId}
-                onChange={(e) => setSearchStudentId(e.target.value)}
-                className="flex-1 border border-neutral-350 rounded px-3 py-2 font-mono text-xs focus:outline-none"
-              />
+            {/* Toggle / Tabs for search type */}
+            <div className="flex gap-2 border-b border-slate-100 pb-3">
               <button
-                id="searchStudentBtn"
-                onClick={handleSearchStudentSchedule}
-                className="px-4 py-2 bg-black text-white hover:bg-neutral-850 font-bold rounded cursor-pointer"
+                type="button"
+                onClick={() => setScheduleSearchType('batch')}
+                className={`px-4 py-1.5 rounded-lg font-sans font-bold text-xs transition-colors cursor-pointer ${
+                  scheduleSearchType === 'batch'
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100'
+                }`}
               >
-                ค้นหาตารางเรียน
+                กรองตามรุ่นนักศึกษา (Batch)
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleSearchType('studentId')}
+                className={`px-4 py-1.5 rounded-lg font-sans font-bold text-xs transition-colors cursor-pointer ${
+                  scheduleSearchType === 'studentId'
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100'
+                }`}
+              >
+                กรองตามรหัสนักศึกษา (Student ID)
               </button>
             </div>
 
-            {foundStudent && (
-              <div className="bg-stone-50 border border-neutral-300 p-4 rounded space-y-4 animate-fade-in">
-                <div className="flex items-center gap-4">
-                  <img src={foundStudent.photoUrl} alt="student" className="w-12 h-16 object-cover border border-neutral-300 rounded" referrerPolicy="no-referrer" />
-                  <div>
-                    <h4 className="font-bold text-neutral-900 text-sm">{foundStudent.firstName} {foundStudent.lastName}</h4>
-                    <p className="font-mono text-neutral-500 font-bold uppercase">ID: {foundStudent.id} | รุ่น {foundStudent.batch}</p>
-                    <p className="font-sans text-[10px] text-neutral-600">สถานภาพนักศึกษา: <b>{foundStudent.status}</b></p>
-                  </div>
+            {/* 1. Filter by Batch view */}
+            {scheduleSearchType === 'batch' && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 max-w-sm">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                    เลือกรุ่นนักศึกษาที่ต้องการตรวจสอบ *
+                  </label>
+                  <select
+                    id="scheduleBatchSelect"
+                    value={selectedScheduleBatch}
+                    onChange={(e) => setSelectedScheduleBatch(e.target.value)}
+                    className="w-full border border-slate-300 px-3 py-1.5 rounded bg-white text-xs font-sans font-semibold focus:outline-none focus:border-slate-900"
+                  >
+                    {dbBatches.map((b) => (
+                      <option key={b} value={b}>
+                        รุ่น {b}
+                      </option>
+                    ))}
+                    {dbBatches.length === 0 && <option value="">ไม่มีข้อมูลรุ่นในสารบบ</option>}
+                  </select>
                 </div>
 
-                <div className="border-t border-neutral-300 pt-3">
-                  <h5 className="font-bold text-xs mb-2">ตารางเรียนประจำปีของชั้นเรียนนักศึกษา</h5>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left bg-white border border-neutral-200">
-                      <thead>
-                        <tr className="bg-neutral-100 text-[10px] text-neutral-650 font-bold uppercase border-b border-neutral-200">
-                          <th className="py-2 px-3">วัน</th>
-                          <th className="py-2 px-3">รหัสวิชา</th>
-                          <th className="py-2 px-3">ชื่อหลักสูตรวิชา</th>
-                          <th className="py-2 px-3">เวลาเรียน</th>
-                          <th className="py-2 px-3">ช่วงวันที่เรียน</th>
-                          <th className="py-2 px-3">ครูผู้สอน</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {studentSchedules.map((schedule) => (
-                          <tr key={schedule.id} className="border-b border-neutral-100 text-[11px]">
-                            <td className="py-2 px-3 font-bold text-neutral-950 font-sans">{schedule.dayOfWeek}</td>
-                            <td className="py-2 px-3 font-mono text-neutral-600">{schedule.subjectCode}</td>
-                            <td className="py-2 px-3 font-semibold text-neutral-800">{schedule.subjectName}</td>
-                            <td className="py-2 px-3 font-semibold text-emerald-800">
-                              {schedule.startTime || '08:30'} - {schedule.endTime || '16:30'} น.
-                              <span className="block text-[9px] text-amber-700 font-normal">พักเที่ยง 12:30 น.</span>
-                            </td>
-                            <td className="py-2 px-3 font-mono">{schedule.startDate} ถึง {schedule.endDate}</td>
-                            <td className="py-2 px-3 font-sans">{schedule.instructorName}</td>
-                          </tr>
-                        ))}
-                        {studentSchedules.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="py-8 text-center text-neutral-450 italic">
-                              ไม่มีวิชาเรียนลงทะเบียนสำหรับรุ่นนักศึกษารายนี้
-                            </td>
-                          </tr>
+                {selectedScheduleBatch && (
+                  <div className="space-y-4">
+                    {/* Schedule List block */}
+                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-3xs">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-slate-900"></span>
+                          ตารางเรียนของนักศึกษา รุ่น {selectedScheduleBatch}
+                        </h4>
+                        <span className="bg-slate-100 text-slate-700 font-sans font-bold text-[10px] px-2 py-0.5 rounded border border-slate-300">
+                          ทั้งหมด {classSchedules.filter(s => s.batch === selectedScheduleBatch).length} วิชา
+                        </span>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left bg-white border border-slate-200 rounded-lg overflow-hidden">
+                          <thead>
+                            <tr className="bg-slate-100 text-[10px] text-slate-650 font-sans font-extrabold uppercase border-b border-slate-200">
+                              <th className="py-2.5 px-3">วัน</th>
+                              <th className="py-2.5 px-3">รหัสวิชา</th>
+                              <th className="py-2.5 px-3">ชื่อหลักสูตรวิชาเรียน</th>
+                              <th className="py-2.5 px-3">เวลาเรียนสอน</th>
+                              <th className="py-2.5 px-3 font-mono">ช่วงวันที่สอน</th>
+                              <th className="py-2.5 px-3">อาจารย์ผู้สอน</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {classSchedules
+                              .filter((schedule) => schedule.batch === selectedScheduleBatch)
+                              .map((schedule) => (
+                                <tr key={schedule.id} className="border-b border-light-200 text-[11px] hover:bg-slate-50 transition-colors">
+                                  <td className="py-2.5 px-3 font-bold text-slate-950 font-sans">{schedule.dayOfWeek}</td>
+                                  <td className="py-2.5 px-3 font-mono text-slate-600 font-bold">{schedule.subjectCode}</td>
+                                  <td className="py-2.5 px-3 font-semibold text-slate-800">{schedule.subjectName}</td>
+                                  <td className="py-2.5 px-3 font-semibold text-emerald-800">
+                                    {schedule.startTime || '08:30'} - {schedule.endTime || '16:30'} น.
+                                    <span className="block text-[9px] text-amber-700 font-normal">พักเที่ยง 12:30 น.</span>
+                                  </td>
+                                  <td className="py-2.5 px-3 font-mono text-slate-600">{schedule.startDate} ถึง {schedule.endDate}</td>
+                                  <td className="py-2.5 px-3 font-sans text-slate-700">{schedule.instructorName}</td>
+                                </tr>
+                              ))}
+                            {classSchedules.filter((schedule) => schedule.batch === selectedScheduleBatch).length === 0 && (
+                              <tr>
+                                <td colSpan={6} className="py-8 text-center text-slate-405 italic">
+                                  ไม่มีข้อมูลรายวิชาเรียนและตารางสอนสำหรับรุ่น {selectedScheduleBatch} ในขณะนี้
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Batch student roster quickview block */}
+                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-3xs">
+                      <h4 className="font-bold text-slate-900 text-xs mb-3 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                        รายชื่อสมาชิกนักศึกษาในรุ่น {selectedScheduleBatch}
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {users
+                          .filter((u) => u && u.role === 'นักศึกษา' && (u.batch === selectedScheduleBatch || String(u.id || '').substring(0, 2) === selectedScheduleBatch))
+                          .map((student) => (
+                            <div
+                              key={student.id}
+                              onClick={() => {
+                                setSearchStudentId(student.id || '');
+                                setFoundStudent(student);
+                                const matchingSchedules = classSchedules.filter(s => s.batch === (student.batch || String(student.id || '').substring(0, 2)));
+                                setStudentSchedules(matchingSchedules);
+                                setScheduleSearchType('studentId');
+                              }}
+                              className="flex items-center gap-3 p-2 border border-slate-200 rounded-lg bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400 transition-all cursor-pointer hover:shadow-2xs"
+                            >
+                              <img
+                                src={student.photoUrl}
+                                alt="student avatar"
+                                className="w-10 h-12 object-cover border border-slate-300 rounded"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-slate-900 truncate text-[11px]">{student.firstName} {student.lastName}</p>
+                                <p className="font-mono text-[9px] text-slate-505 font-bold">ID: {student.id}</p>
+                                <span className={`inline-block text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                                  student.status === 'Active' ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-750'
+                                }`}>
+                                  {student.status || 'Active'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        {users.filter((u) => u && u.role === 'นักศึกษา' && (u.batch === selectedScheduleBatch || String(u.id || '').substring(0, 2) === selectedScheduleBatch)).length === 0 && (
+                          <p className="col-span-full py-4 text-center text-slate-405 italic">
+                            ไม่มีรายชื่อนักศึกษาลงทะเบียนในรุ่น {selectedScheduleBatch}
+                          </p>
                         )}
-                      </tbody>
-                    </table>
+                      </div>
+                    </div>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. Search/Filter by Student ID */}
+            {scheduleSearchType === 'studentId' && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex gap-2 max-w-md">
+                  <input
+                    id="searchStudentIdInput"
+                    type="text"
+                    placeholder="ระบุรหัสนักศึกษา (เช่น 67010214)"
+                    value={searchStudentId}
+                    onChange={(e) => setSearchStudentId(e.target.value)}
+                    className="flex-1 border border-neutral-350 rounded px-3 py-2 font-mono text-xs focus:outline-none"
+                  />
+                  <button
+                    id="searchStudentBtn"
+                    onClick={handleSearchStudentSchedule}
+                    className="px-4 py-2 bg-black text-white hover:bg-neutral-850 font-bold rounded cursor-pointer"
+                  >
+                    ค้นหาตารางเรียน
+                  </button>
                 </div>
+
+                {foundStudent ? (
+                  <div className="bg-stone-50 border border-neutral-300 p-4 rounded space-y-4 animate-fade-in">
+                    <div className="flex items-center gap-4">
+                      <img src={foundStudent.photoUrl} alt="student" className="w-12 h-16 object-cover border border-neutral-300 rounded" referrerPolicy="no-referrer" />
+                      <div>
+                        <h4 className="font-bold text-neutral-900 text-sm">{foundStudent.firstName} {foundStudent.lastName}</h4>
+                        <p className="font-mono text-neutral-500 font-bold uppercase">ID: {foundStudent.id} | รุ่น {foundStudent.batch}</p>
+                        <p className="font-sans text-[10px] text-neutral-600">สถานภาพนักศึกษา: <b>{foundStudent.status}</b></p>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-neutral-300 pt-3">
+                      <h5 className="font-bold text-xs mb-2">ตารางเรียนประจำปีของชั้นเรียนนักศึกษา</h5>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left bg-white border border-neutral-200">
+                          <thead>
+                            <tr className="bg-neutral-100 text-[10px] text-neutral-650 font-bold uppercase border-b border-neutral-200">
+                              <th className="py-2 px-3">วัน</th>
+                              <th className="py-2 px-3">รหัสวิชา</th>
+                              <th className="py-2 px-3">ชื่อหลักสูตรวิชา</th>
+                              <th className="py-2 px-3">เวลาเรียน</th>
+                              <th className="py-2 px-3">ช่วงวันที่เรียน</th>
+                              <th className="py-2 px-3">ครูผู้สอน</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {studentSchedules.map((schedule) => (
+                              <tr key={schedule.id} className="border-b border-neutral-100 text-[11px]">
+                                <td className="py-2 px-3 font-bold text-neutral-950 font-sans">{schedule.dayOfWeek}</td>
+                                <td className="py-2 px-3 font-mono text-neutral-600">{schedule.subjectCode}</td>
+                                <td className="py-2 px-3 font-semibold text-neutral-800">{schedule.subjectName}</td>
+                                <td className="py-2 px-3 font-semibold text-emerald-800">
+                                  {schedule.startTime || '08:30'} - {schedule.endTime || '16:30'} น.
+                                  <span className="block text-[9px] text-amber-700 font-normal">พักเที่ยง 12:30 น.</span>
+                                </td>
+                                <td className="py-2 px-3 font-mono">{schedule.startDate} ถึง {schedule.endDate}</td>
+                                <td className="py-2 px-3 font-sans">{schedule.instructorName}</td>
+                              </tr>
+                            ))}
+                            {studentSchedules.length === 0 && (
+                              <tr>
+                                <td colSpan={6} className="py-8 text-center text-neutral-450 italic">
+                                  ไม่มีวิชาเรียนลงทะเบียนสำหรับรุ่นนักศึกษารายนี้
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-slate-400 italic bg-slate-50 rounded-xl border border-dashed border-slate-350">
+                    โปรดกรอกรหัสประจำตัวนักศึกษาแล้วคลิก ค้นหา เพื่อแสดงประวัติรายบุคคล
+                  </div>
+                )}
               </div>
             )}
           </div>

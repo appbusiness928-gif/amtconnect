@@ -367,6 +367,15 @@ export default function ExamOfficeStudentPanel({
   const [editPhoto, setEditPhoto] = useState(currentUser.photoUrl);
   const [editSig, setEditSig] = useState(currentUser.signature);
 
+  // Custom ID Card state hooks
+  const idCardLayout = 'vertical';
+  const [idCardTheme, setIdCardTheme] = useState<'official' | 'navy' | 'dark' | 'emerald' | 'gold' | 'minimal'>('minimal');
+  const [idCardDept, setIdCardDept] = useState('AMT CONNECT');
+  const [idCardTitle, setIdCardTitle] = useState(currentUser.role === 'นักศึกษา' ? 'STUDENT IDENTIFICATION' : 'AIRCRAFT INSTRUCTOR PASS');
+  const [idCardShowSignature, setIdCardShowSignature] = useState(true);
+  const [idCardShowBarcode, setIdCardShowBarcode] = useState(true);
+  const [idCardCustomBatch, setIdCardCustomBatch] = useState(currentUser.batch || studentBatch || '67');
+
   const handleCancelEditProfile = () => {
     setEditFirstName(currentUser.firstName);
     setEditLastName(currentUser.lastName);
@@ -699,6 +708,385 @@ export default function ExamOfficeStudentPanel({
     Swal.fire({ icon: 'success', title: 'เบิกจ่ายเครื่องมือสำเร็จ', text: 'อุปกรณ์ถูกโอนย้ายสถานะ และสิทธิ์ในการพายึดเรียบร้อย', confirmButtonColor: '#171717' });
   };
 
+  const getThemeStyles = () => {
+    switch (idCardTheme) {
+      case 'official':
+        return {
+          bgClass: 'bg-white text-neutral-950 border border-neutral-300',
+          textColor: 'text-neutral-950',
+          descColor: 'text-neutral-500',
+          subDescColor: 'text-neutral-400',
+          tagClass: 'bg-neutral-950 text-white font-extrabold',
+          stripeClass: 'bg-neutral-950',
+          labelColor: 'text-neutral-500',
+          subLabelColor: 'text-neutral-950 font-extrabold',
+          photoBorder: 'border-neutral-950',
+          dashedBorder: 'border-neutral-300',
+          footerBorder: 'border-neutral-250',
+          qrBorder: 'border-neutral-300',
+          sigClass: 'filter grayscale mix-blend-multiply'
+        };
+      case 'dark':
+        return {
+          bgClass: 'bg-gradient-to-br from-zinc-950 via-zinc-900 to-neutral-900 text-white border border-zinc-700/50',
+          textColor: 'text-white',
+          descColor: 'text-zinc-400',
+          subDescColor: 'text-zinc-500',
+          tagClass: 'bg-orange-600 text-orange-100 font-extrabold',
+          stripeClass: 'bg-orange-500',
+          labelColor: 'text-zinc-400',
+          subLabelColor: 'text-orange-400 font-extrabold',
+          photoBorder: 'border-orange-500',
+          dashedBorder: 'border-zinc-800',
+          footerBorder: 'border-zinc-800',
+          qrBorder: 'border-zinc-750',
+          sigClass: 'invert opacity-95'
+        };
+      case 'emerald':
+        return {
+          bgClass: 'bg-gradient-to-br from-slate-950 via-emerald-950 to-teal-950 text-white border border-emerald-800/40',
+          textColor: 'text-white',
+          descColor: 'text-emerald-300',
+          subDescColor: 'text-emerald-500',
+          tagClass: 'bg-emerald-600 text-emerald-100 font-extrabold',
+          stripeClass: 'bg-emerald-500',
+          labelColor: 'text-emerald-300',
+          subLabelColor: 'text-emerald-400 font-extrabold',
+          photoBorder: 'border-emerald-500',
+          dashedBorder: 'border-emerald-900',
+          footerBorder: 'border-emerald-900',
+          qrBorder: 'border-emerald-800',
+          sigClass: 'invert opacity-95'
+        };
+      case 'gold':
+        return {
+          bgClass: 'bg-gradient-to-br from-[#121212] via-[#241f12] to-[#121212] text-yellow-105 border border-yellow-800/50',
+          textColor: 'text-yellow-100',
+          descColor: 'text-yellow-500/80',
+          subDescColor: 'text-yellow-600/50',
+          tagClass: 'bg-yellow-650 text-slate-950 font-black',
+          stripeClass: 'bg-yellow-650',
+          labelColor: 'text-yellow-500/80',
+          subLabelColor: 'text-yellow-400 font-extrabold',
+          photoBorder: 'border-yellow-650',
+          dashedBorder: 'border-yellow-900/40',
+          footerBorder: 'border-yellow-905/30',
+          qrBorder: 'border-yellow-902/50',
+          sigClass: 'invert opacity-95'
+        };
+      case 'minimal':
+        return {
+          bgClass: 'bg-[#fafafa] text-neutral-900 border-2 border-neutral-850',
+          textColor: 'text-neutral-900',
+          descColor: 'text-neutral-500',
+          subDescColor: 'text-neutral-400',
+          tagClass: 'bg-neutral-900 text-white font-extrabold',
+          stripeClass: 'bg-neutral-800',
+          labelColor: 'text-neutral-500',
+          subLabelColor: 'text-neutral-900 font-extrabold',
+          photoBorder: 'border-neutral-900',
+          dashedBorder: 'border-neutral-300',
+          footerBorder: 'border-neutral-250',
+          qrBorder: 'border-neutral-300',
+          sigClass: 'filter grayscale mix-blend-multiply'
+        };
+      case 'navy':
+      default:
+        return {
+          bgClass: 'bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white border border-slate-700/50',
+          textColor: 'text-white',
+          descColor: 'text-indigo-300',
+          subDescColor: 'text-indigo-500',
+          tagClass: 'bg-blue-600 text-blue-50 font-extrabold',
+          stripeClass: 'bg-blue-500',
+          labelColor: 'text-indigo-300',
+          subLabelColor: 'text-yellow-400 font-extrabold',
+          photoBorder: 'border-blue-500',
+          dashedBorder: 'border-slate-850',
+          footerBorder: 'border-slate-850',
+          qrBorder: 'border-slate-700',
+          sigClass: 'invert opacity-95'
+        };
+    }
+  };
+
+  const renderIdCardFront = (mode: 'screen' | 'print') => {
+    const t = getThemeStyles();
+    const isPrint = mode === 'print';
+    const containerClass = isPrint
+      ? `${t.bgClass} physical-card relative flex flex-col justify-between overflow-hidden p-[4.2mm] rounded-[3mm]`
+      : `${t.bgClass} w-[340px] h-[215px] select-none rounded-2xl shadow-xl relative flex flex-col justify-between overflow-hidden p-4 transition-all hover:scale-101 hover:shadow-2xl`;
+
+    return (
+      <div className={containerClass} style={{ boxSizing: 'border-box' }}>
+        {/* Subtle aircraft grid watermark background */}
+        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+        
+        {/* Card Header */}
+        <div className="flex justify-between items-start z-10 w-full">
+          <div className="flex flex-col text-left">
+            <span className={`text-[8.5px] font-black uppercase tracking-wider leading-tight ${idCardTheme === 'minimal' ? 'text-black font-extrabold' : 'text-slate-200'}`}>
+              {idCardDept}
+            </span>
+            <span className="text-[6.5px] font-mono font-bold tracking-widest text-[#F59E0B] uppercase">
+              AIRCRAFT MAINTENANCE SYSTEM
+            </span>
+          </div>
+          <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${t.tagClass}`}>
+            {idCardTitle}
+          </div>
+        </div>
+
+        {/* Card Body */}
+        <div className="flex gap-3 my-1 items-center flex-1 z-10 w-full">
+          <div className="relative shrink-0 w-[58px] h-[72px] border-2 border-white/80 rounded overflow-hidden shadow-md bg-stone-100">
+            <img 
+              src={editPhoto || currentUser.photoUrl} 
+              alt="Photo" 
+              className="w-full h-full object-cover" 
+              referrerPolicy="no-referrer"
+            />
+          </div>
+
+          <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
+            <span className="block text-[6.5px] text-zinc-400 font-bold uppercase">NAME-SURNAME</span>
+            <div className={`text-[12.5px] font-black tracking-tight truncate uppercase leading-tight ${idCardTheme === 'minimal' ? 'text-neutral-950 font-black' : 'text-white'}`}>
+              {editFirstName} {editLastName}
+            </div>
+            
+            <div className="text-[8.5px] font-sans font-medium mt-0.5">
+              <span className="text-zinc-400 uppercase text-[6.5px] block font-bold">POSITION</span>
+              <span className={`font-black ${idCardTheme === 'minimal' ? 'text-neutral-800 text-xs font-bold' : 'text-white'}`}>{currentUser.role || 'นักศึกษา'}</span>
+            </div>
+
+            {/* Batch & Code details info */}
+            <div className="grid grid-cols-2 gap-2 mt-1 border-t border-dashed border-white/20 pt-1">
+              <div>
+                <span className="block text-[5.5px] text-zinc-400 font-bold uppercase">COHORT / BATCH</span>
+                <span className={`block font-mono text-[9px] font-extrabold ${t.subLabelColor}`}>
+                  รุ่น {idCardCustomBatch}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[5.5px] text-zinc-400 font-bold uppercase">IDENTIFICATION</span>
+                <span className={idCardTheme === 'minimal' ? "block font-mono text-[9px] font-extrabold text-neutral-900" : "block font-mono text-[9px] font-extrabold text-white"}>
+                  {currentUser.id}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Footer */}
+        <div className="flex justify-between items-end border-t border-dashed border-white/20 pt-1 mt-0.5 z-10 w-full">
+          <div>
+            {idCardShowBarcode && (
+              <div className="bg-white p-0.5 rounded flex flex-col items-center select-none scale-90 origin-left">
+                <div className="flex gap-[0.8px] h-3 items-center">
+                  <span className="w-[1.2px] h-full bg-black"></span>
+                  <span className="w-[0.6px] h-full bg-black"></span>
+                  <span className="w-[1px] h-full bg-black"></span>
+                  <span className="w-[2px] h-full bg-black"></span>
+                  <span className="w-[0.6px] h-full bg-black"></span>
+                  <span className="w-[1.2px] h-full bg-black"></span>
+                  <span className="w-[1px] h-full bg-black"></span>
+                  <span className="w-[2px] h-full bg-black"></span>
+                  <span className="w-[0.6px] h-full bg-black"></span>
+                  <span className="w-[1.2px] h-full bg-black"></span>
+                </div>
+                <span className="text-[4.5px] font-mono leading-none font-bold text-black select-none">
+                  *{currentUser.id}*
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="text-right">
+            {idCardShowSignature && editSig && (
+              <div className="relative inline-block mr-1 text-center">
+                <img 
+                  src={editSig} 
+                  alt="Sign" 
+                  className={`h-5 object-contain bg-transparent ${idCardTheme === 'minimal' ? 'brightness-50' : 'invert opacity-95'} mx-auto`} 
+                  referrerPolicy="no-referrer"
+                />
+                <div className="w-[45px] h-[0.5px] bg-white/40 border-t border-dashed mt-0.5"></div>
+                <span className="block text-[5px] text-slate-400 font-bold uppercase tracking-wider">SIGNATURE</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dynamic decorative colored safety stripe at the very bottom */}
+        <div className={`absolute bottom-0 left-0 right-0 h-1.5 ${t.stripeClass}`} />
+      </div>
+    );
+  };
+
+  const renderIdCardBack = (mode: 'screen' | 'print') => {
+    const t = getThemeStyles();
+    const isPrint = mode === 'print';
+    const containerClass = isPrint
+      ? `${t.bgClass} physical-card relative flex flex-col justify-between overflow-hidden p-[4.2mm] rounded-[3mm]`
+      : `${t.bgClass} w-[340px] h-[215px] select-none rounded-2xl shadow-xl relative flex flex-col justify-between overflow-hidden p-4 transition-all hover:scale-101 hover:shadow-2xl`;
+
+    return (
+      <div className={containerClass} style={{ boxSizing: 'border-box' }}>
+        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+        {/* Card Header - Terms of Use */}
+        <div className="flex justify-between items-start z-10 w-full">
+          <div className="text-left">
+            <h6 className="text-[7.5px] font-sans font-black uppercase tracking-wider leading-none text-amber-500">
+              ข้อตกลงและเงื่อนไขความปลอดภัย
+            </h6>
+            <span className="text-[6px] tracking-widest text-slate-300 font-mono block mt-0.5 uppercase">
+              TERMS AND CONDITIONS OF USAGE
+            </span>
+          </div>
+          <span className="text-[8px] font-bold text-slate-400 select-none">CR-80 SECURE PASS</span>
+        </div>
+
+        {/* Terms list & QR side-by-side */}
+        <div className="flex gap-3 justify-between items-center my-1.5 flex-1 z-10 w-full">
+          {/* Rules List */}
+          <div className="flex-1 text-[6.5px] text-slate-300 space-y-1 font-sans leading-tight text-left">
+            <p className="flex items-start gap-1">
+              <span className="text-amber-500">1.</span>
+              <span>บัตรนี้เป็นทรัพย์สินสถาบันศึกษา บัญญัติให้ติดตัวไว้ตลอดเวลาขณะปฏิบัติบำรุงในโรงเก็บอากาศยาน (Wear card always in hangar)</span>
+            </p>
+            <p className="flex items-start gap-1">
+              <span className="text-amber-500">2.</span>
+              <span>ไม่อนุญาตให้ผู้อื่นยืมใช้โดยตรง หากฝ่าฝืนมีโทษปรับทางกฎระเบียบวินัยขั้นสูงสุด (Strictly non-transferable)</span>
+            </p>
+            <p className="flex items-start gap-1">
+              <span className="text-amber-500">3.</span>
+              <span>หากเก็บได้โปรดนำคืน แผนกพัฒนาการจัดฝึกอบรมช่างและบำรุงอากาศยาน ทันที (If found, reward upon returning)</span>
+            </p>
+          </div>
+
+          {/* Large dynamic QR Code - Satisfies request "สร้างQR ให้ใหญ่กว่านี้นิดหนึ่ง" */}
+          <div className="shrink-0 flex flex-col items-center bg-white p-1 rounded-lg border border-neutral-300 shadow-xs select-none">
+            <img 
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
+              alt="QR Check" 
+              className="w-11 h-11 rounded border border-neutral-100 p-0.5 animate-pulse"
+              referrerPolicy="no-referrer"
+            />
+            <span className="text-[4.5px] font-mono font-bold text-neutral-500 mt-0.5 uppercase tracking-widest leading-none scale-90">CHECK ID</span>
+            <span className="text-[5.5px] text-[#0F172A] font-extrabold mt-0.5 leading-none">{currentUser.id}</span>
+          </div>
+        </div>
+
+        {/* Back Card Footer - Authorized sign off */}
+        <div className="flex justify-between items-end border-t border-dashed border-white/20 pt-1.5 z-10 mt-0.5 w-full">
+          <div className="text-[5.5px] text-slate-400 font-mono text-left">
+            <span>ISSUED BY ACADEMIC AVIATION COUNCIL</span>
+            <span className="block mt-0.5">© 2026 AVIATION MAINTENANCE SYSTEM.</span>
+          </div>
+
+          {/* Chief approval signature line */}
+          <div className="text-right flex flex-col items-center mr-1">
+            <span className="text-[8px] font-serif italic font-extrabold tracking-wide text-[#E2E8F0]/80 leading-none select-none opacity-80 h-3 flex items-center">
+              Adm. Chief Commander
+            </span>
+            <div className="w-[50px] h-[0.5px] bg-white/40 border-t border-dashed mt-0.5"></div>
+            <span className="text-[5px] text-slate-400 font-bold tracking-wider uppercase leading-none mt-0.5">AUTHORIZATION</span>
+          </div>
+        </div>
+
+        {/* Dynamic decorative colored safety stripe at the very bottom */}
+        <div className={`absolute bottom-0 left-0 right-0 h-1.5 ${t.stripeClass}`} />
+      </div>
+    );
+  };
+
+  const renderIdCardVertical = (mode: 'screen' | 'print') => {
+    const t = getThemeStyles();
+    const isPrint = mode === 'print';
+
+    const containerClass = isPrint
+      ? `${t.bgClass} physical-card-vertical relative flex flex-col justify-between items-center text-center overflow-hidden p-[4.2mm] rounded-[3mm] h-[85.6mm] w-[53.98mm] shadow-none`
+      : `${t.bgClass} w-[245px] h-[382px] select-none rounded-[14px] shadow-xl relative flex flex-col justify-between items-center text-center overflow-hidden p-4 transition-all hover:scale-101 hover:shadow-2xl`;
+
+    return (
+      <div className={containerClass} style={{ boxSizing: 'border-box' }}>
+        {/* Header Accent block */}
+        <div className={`absolute top-0 left-0 right-0 h-1.5 ${t.stripeClass}`} />
+        
+        {/* School Brand */}
+        <div className="mt-2 w-full text-center">
+          <h4 className={`font-sans font-extrabold text-[12.5px] uppercase tracking-wider font-black ${t.textColor}`}>
+            {idCardDept}
+          </h4>
+          <p className={`font-sans text-[7.5px] font-bold block mt-0.5 leading-tight ${t.descColor}`}>
+            สถาบันฝึกอบรมช่างบำรุงรักษาอากาศยาน
+          </p>
+          <p className={`font-mono text-[6.5px] mt-0.5 tracking-wider font-bold ${t.subDescColor}`}>
+            AIRCRAFT MAINTENANCE TRAINING CENTER
+          </p>
+        </div>
+
+        {/* Photo */}
+        <div className="my-1.5 shrink-0 flex justify-center">
+          <div className={`border-2 ${t.photoBorder} rounded-xs overflow-hidden bg-neutral-100 relative ${isPrint ? 'w-[20mm] h-[24mm]' : 'w-20 h-24'}`}>
+            <img
+              src={editPhoto || currentUser.photoUrl}
+              alt="Photo"
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        </div>
+
+        {/* User Info Details */}
+        <div className="w-full text-center">
+          <h3 className={`font-sans font-extrabold text-[12px] truncate leading-tight uppercase ${t.textColor}`}>
+            {editFirstName} {editLastName}
+          </h3>
+          <p className={`font-sans text-[9px] font-extrabold uppercase tracking-wide mt-0.5 leading-none ${t.descColor}`}>
+            ตำแหน่ง: {currentUser.role || 'นักศึกษา'}
+          </p>
+          <p className={`font-mono text-[9px] font-bold mt-1 leading-none ${t.descColor}`}>
+            ID: {currentUser.id}
+          </p>
+        </div>
+
+        {/* QR Code Section - styled for durability and easy scan with white bg */}
+        <div className="my-2 select-none flex flex-col items-center">
+          <img 
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
+            alt="QR Verification" 
+            className={`w-16 h-16 border ${t.qrBorder} p-1 bg-white shadow-xs rounded-md`} 
+            referrerPolicy="no-referrer"
+          />
+          <span className={`text-[6.5px] font-mono tracking-widest mt-1 uppercase font-bold ${t.descColor}`}>VERIFY QR CODE</span>
+        </div>
+
+        {/* Signature Area */}
+        <div className={`w-full border-t border-dashed ${t.dashedBorder} pt-1 flex flex-col items-center shrink-0`}>
+          {idCardShowSignature && editSig ? (
+            <img
+              src={editSig}
+              alt="ลายมือชื่อ"
+              className={`h-4.5 object-contain pointer-events-none ${t.sigClass}`}
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className={`h-4.5 text-[8px] italic flex items-center justify-center ${t.descColor}`}>ไม่มีลายเซ็น</div>
+          )}
+          <span className={`text-[7px] font-sans mt-0.5 ${t.descColor}`}>ลายมือชื่อผู้ถือบัตร</span>
+        </div>
+
+        {/* Footer stamp */}
+        <div className={`w-full flex items-center justify-between border-t ${t.footerBorder} pt-1 text-[6.5px] font-mono uppercase leading-none mb-0.5 ${t.descColor}`}>
+          <span>REG: {currentUser.createdAt || '23/04/2025'}</span>
+          <span>TLTC CARD</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 text-slate-850 font-sans text-xs">
       
@@ -966,10 +1354,10 @@ export default function ExamOfficeStudentPanel({
               </div>
             </form>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-4 bg-stone-100/50 border border-neutral-300 rounded">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 bg-stone-100/50 border border-neutral-300 rounded-xl no-print">
               <div className="flex flex-col sm:flex-row items-center gap-6">
-                <img src={currentUser.photoUrl} alt="avatar" className="w-16 h-20 object-cover rounded border border-neutral-400 shrink-0" referrerPolicy="no-referrer" />
-                <div>
+                <img src={currentUser.photoUrl} alt="avatar" className="w-16 h-20 object-cover rounded border border-neutral-400 shrink-0 shadow-sm" referrerPolicy="no-referrer" />
+                <div className="text-left">
                   <h4 className="font-bold text-neutral-900 text-sm">{currentUser.firstName} {currentUser.lastName}</h4>
                   <p className="font-sans text-[11px] text-neutral-600">ตำแหน่งการช่าง: <b>{currentUser.role}</b></p>
                   <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 font-mono text-[10px] px-2 py-0.5 rounded font-bold mt-2 inline-block">
@@ -978,18 +1366,149 @@ export default function ExamOfficeStudentPanel({
                 </div>
               </div>
               
-              {/* Profile QR Verification block */}
-              <div className="flex flex-col items-center bg-white p-3 rounded-lg border border-neutral-300 shadow-xs shrink-0 select-none">
+              {/* Profile QR Verification block - enlarged to meet user request */}
+              <div className="flex flex-col items-center bg-white p-4 rounded-xl border border-neutral-300 shadow-sm shrink-0 select-none">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
                   alt="Student ID QR Code" 
-                  className="w-16 h-16 rounded border border-neutral-100 p-0.5"
+                  className="w-24 h-24 rounded-lg border border-neutral-100 p-1"
                   referrerPolicy="no-referrer"
                 />
-                <span className="text-[7.5px] font-mono font-bold text-neutral-500 mt-1.5 uppercase tracking-wider">VERIFICATION QR</span>
-                <span className="text-[9px] text-[#0F172A] font-bold mt-0.5">{currentUser.id}</span>
+                <span className="text-[8px] font-mono font-black text-neutral-500 mt-2 uppercase tracking-widest">VERIFICATION QR</span>
+                <span className="text-[10px] text-[#0F172A] font-extrabold mt-0.5 font-mono">{currentUser.id}</span>
               </div>
             </div>
+
+            {/* -------------------- CUSTOM ID CARD GENERATOR SECTION -------------------- */}
+            <hr className="border-neutral-250 my-6 border-dashed no-print" />
+            
+            <div className="bg-slate-50 border border-slate-205 p-6 rounded-xl space-y-6 no-print text-left">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div>
+                  <h4 className="font-sans font-extrabold text-[#0F172A] text-sm flex items-center gap-2">
+                    <span className="p-1.5 bg-[#0F172A] text-white rounded-md text-xs">🪪</span>
+                    เครื่องมือออกแบบและระบบจัดทำสร้างบัตรขึ้นทะเบียนด้วยตนเอง (Personal ID Card Creator)
+                  </h4>
+                  <p className="text-slate-500 text-[11px] mt-1 font-sans">
+                    ออกแบบ จัดหน้าตา และได้รับบัตรประจำตัวการช่างขนาดสากลพลาสติกจริง (CR-80: 8.56 ซม. x 5.40 ซม.) สัญชาติการวิชาอากาศยาน บันทึกพล็อตลงเครื่องพิมพ์ขนาด 1:1 ได้ทันที
+                  </p>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.print();
+                  }}
+                  className="flex items-center gap-1.5 bg-neutral-950 hover:bg-neutral-850 text-white px-4 py-2 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm self-start md:self-center shrink-0"
+                >
+                  <Printer size={13} />
+                  <span>สั่งพิมพ์บัตรประจำตัวส่วนตัว</span>
+                </button>
+              </div>
+
+              {/* Designer controls and live card models layout */}
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                {/* Inputs settings col */}
+                <div className="xl:col-span-5 space-y-4">
+                  <div className="bg-white p-5 rounded-xl border border-slate-205 shadow-2xs space-y-4">
+                    <h5 className="font-sans font-extrabold text-[#0F172A] text-[11px] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-2.5">
+                      <span>🎨</span> สีพื้นหลังบัตรประจำตัว (Background Theme Color)
+                    </h5>
+
+                    <p className="text-slate-500 text-[10.5px] font-sans leading-relaxed">
+                      ปรับแต่งเปลี่ยนสีธีมพื้นหลังของบัตรประจำตัวการช่างตามที่คุณต้องการ โครงสร้าง ข้อมูลส่วนตัว และตำแหน่งจะยังคงความถูกต้องตามระเบียบสถาบันอย่างเสถียร
+                    </p>
+
+                    {/* Themes list selection grid */}
+                    <div className="grid grid-cols-1 gap-2 pt-1">
+                      {[
+                        { key: 'minimal', label: 'Swiss Light (สีขาวราชการถนอมสายตา)', color: 'bg-white border-neutral-300 text-neutral-900 border shadow-xs' },
+                        { key: 'navy', label: 'Dark Navy (น้ำเงินเข้มหรูหราประจำการ)', color: 'bg-slate-900 border-indigo-505 text-white' },
+                        { key: 'dark', label: 'Stealth Black (ดำคาร์บอนพรีเมียมเข้มข่าว)', color: 'bg-zinc-950 border-orange-505 shadow-sm text-white' },
+                        { key: 'emerald', label: 'Emerald Tech (เขียวมรกตเทคโนโลยีชั้นสูง)', color: 'bg-emerald-950 border-emerald-500 text-white' },
+                        { key: 'gold', label: 'Security Gold (สีดำทองประดับเกียรติยศชั้นเอก)', color: 'bg-[#241f12] border-yellow-500 text-yellow-105' }
+                      ].map(t => (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => setIdCardTheme(t.key as any)}
+                          className={`flex items-center gap-3 p-3 rounded-lg border text-[10.5px] font-bold text-left cursor-pointer transition-all ${t.color} ${
+                            idCardTheme === t.key ? 'ring-2 ring-blue-500 ring-offset-1 scale-101 border-transparent' : 'opacity-85 hover:opacity-100 bg-opacity-90'
+                          }`}
+                        >
+                          <span className="w-3.5 h-3.5 rounded-full bg-current opacity-80 shrink-0 border border-slate-300" />
+                          <span className="leading-tight block font-sans">{t.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ID Card Display previews col */}
+                <div className="xl:col-span-7 flex flex-col gap-5 items-center justify-center border-l border-slate-200/50 pl-2 xl:pl-6 min-h-[300px]">
+                  <h5 className="font-bold text-slate-800 text-[10.5px] uppercase tracking-wide self-start flex items-center gap-1 select-none">
+                    <span>✨</span> ตัวอย่างจำลองความแม่นยำสูง (LIVE DESIGN ACCURACY PREVIEW)
+                  </h5>
+
+                  <div className="flex flex-col items-center justify-center w-full py-4 animate-fade-in">
+                    <span className="text-[9px] font-black uppercase text-[#F59E0B] tracking-wider mb-3 block bg-[#0F172A] px-3 py-1 rounded-full border border-yellow-500/10">
+                      VERTICAL PORTRAIT PASS • แนวตั้งหน้าเดียวพร้อมคิวอาร์โค้ดสแกน
+                    </span>
+                    {renderIdCardVertical('screen')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Print layout section hidden on screen but specifically visible when printing */}
+            <div className="hidden print:block font-sans print-layout">
+              {renderIdCardVertical('print')}
+            </div>
+
+            <style>{`
+              @media print {
+                body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  background: white !important;
+                  color: black !important;
+                }
+                #root, .no-print {
+                  display: none !important;
+                }
+                .print-layout {
+                  display: flex !important;
+                  flex-direction: row !important;
+                  flex-wrap: wrap !important;
+                  gap: 15mm !important;
+                  justify-content: center !important;
+                  align-items: center !important;
+                  height: 100vh !important;
+                  padding: 0 !important;
+                  background: white !important;
+                }
+                .physical-card {
+                  width: 85.6mm !important;
+                  height: 53.98mm !important;
+                  border: 0.5px solid #d1d5db !important;
+                  border-radius: 3.18mm !important;
+                  box-sizing: border-box !important;
+                  page-break-inside: avoid !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                .physical-card-vertical {
+                  width: 53.98mm !important;
+                  height: 85.6mm !important;
+                  border: 0.5px solid #d1d5db !important;
+                  border-radius: 3.18mm !important;
+                  box-sizing: border-box !important;
+                  page-break-inside: avoid !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+              }
+            `}</style>
 
             {/* End of content */}
           </div>
