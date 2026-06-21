@@ -409,7 +409,9 @@ export default function ExamOfficeStudentPanel({
       signature: editSig
     });
     setIsEditingProfile(false);
-    Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'แก้ไขข้อมูลของฉันเรียบร้อยแล้ว', confirmButtonColor: '#171717' });
+    
+    // Log English Name to Sheet (simulation/proxy)                
+    console.log("Saving to Sheet: ", { firstNameEn: editFirstNameEn, lastNameEn: editLastNameEn });
   };
 
   const checkRoomBusy = (roomName: string): boolean => {
@@ -1324,7 +1326,7 @@ export default function ExamOfficeStudentPanel({
         {/* TAB 1: USER INFO / STUDENT REVIEWS */}
         {activeTab === 'profile' && (
           <div className="space-y-6 animate-fade-in">
-            <h3 className="font-sans font-extrabold text-sm border-b pb-2 flex items-center justify-between">
+            <h3 className="font-sans font-extrabold text-[#0F172A] text-sm border-b pb-2 flex items-center justify-between">
               <span>ประวัติข้อมูลส่วนตัวและผลการจองของฉัน ({currentUser.role})</span>
               <span className="font-mono text-[10px] text-neutral-500">ID: {currentUser.id}</span>
             </h3>
@@ -1333,8 +1335,6 @@ export default function ExamOfficeStudentPanel({
             <form onSubmit={handleUpdateProfileSubmit} className="space-y-4 bg-stone-50 border border-neutral-300 p-4 rounded">
               <div className="flex items-center justify-between border-b pb-1">
                 <h4 className="font-bold text-neutral-900 text-xs">แก้ไขประวัติข้อมูลและรูปภาพลายเซ็น</h4>
-                
-                
               </div>
               
               <div className="flex flex-col sm:flex-row items-center gap-6 p-2 rounded mb-1">
@@ -1529,26 +1529,8 @@ export default function ExamOfficeStudentPanel({
                 <div>
                   <h4 className="font-sans font-extrabold text-[#0F172A] text-sm flex items-center gap-2">
                     <span className="p-1.5 bg-[#0F172A] text-white rounded-md text-xs">🪪</span>
-                    เครื่องมือออกแบบและระบบจัดทำสร้างบัตรขึ้นทะเบียนด้วยตนเอง (Personal ID Card Creator)
+                    พิมพ์บัตร
                   </h4>
-                  <p className="text-slate-500 text-[11px] mt-1 font-sans">
-                    ออกแบบ จัดหน้าตา และได้รับบัตรประจำตัวการช่างขนาดสากลพลาสติกจริง (CR-80: 8.56 ซม. x 5.40 ซม.) สัญชาติการวิชาอากาศยาน บันทึกพล็อตลงเครื่องพิมพ์ขนาด 1:1 ได้ทันที
-                  </p>
-                  
-                  {/* Print custom user tip for removing browser headers and footers */}
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 font-sans space-y-1">
-                    <p className="font-extrabold flex items-center gap-1.5 text-amber-950">
-                      <span>💡</span> วิธีลบที่อยู่เว็บและวันที่ตรงมุมขอบออก (ลบส่วนหัว/ท้ายกระดาษที่เบราว์เซอร์สร้าง):
-                    </p>
-                    <ul className="list-disc pl-4 space-y-0.5 mt-1 leading-relaxed text-amber-850">
-                      <li>
-                        <strong>สำหรับ iPad/iPhone (Safari):</strong> เมื่อกดปุ่มสั่งพิมพ์แล้ว ในหน้าตั้งค่าเครื่องพิมพ์ ให้เลื่อนลงล่างสุด แล้วปิดสวิตช์ <strong>"หัวกระดาษและท้ายกระดาษ" (Headers &amp; Footers)</strong> เพื่อทำให้ขอบขาวสะอาดสะอ้าน
-                      </li>
-                      <li>
-                        <strong>สำหรับ Google Chrome / คอมพิวเตอร์:</strong> ในหน้าพรีวิวสั่งพิมพ์ ให้กด "การตั้งค่าเพิ่มเติม" (More settings) &gt; ระยะขอบ (Margins) เลือก <strong>"ไม่มี" (None)</strong> และเปิดติ๊กถูก <strong>"กราฟิกพื้นหลัง" (Background graphics)</strong>
-                      </li>
-                    </ul>
-                  </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-2 self-start md:self-center shrink-0">
@@ -1565,18 +1547,7 @@ export default function ExamOfficeStudentPanel({
                     className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm"
                   >
                     <Award size={13} />
-                    <span>สร้างไฟล์ PDF (1:1 คมชัดสูง • แนะนำ)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.print();
-                    }}
-                    className="flex items-center gap-1.5 bg-neutral-950 hover:bg-neutral-850 text-white px-4 py-2.5 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm"
-                  >
-                    <Printer size={13} />
-                    <span>พิมพ์ผ่านเบราว์เซอร์ทั่วไป</span>
+                    <span>สร้างไฟล์ PDF</span>
                   </button>
                 </div>
               </div>
@@ -1590,18 +1561,14 @@ export default function ExamOfficeStudentPanel({
                       <span>🎨</span> สีพื้นหลังบัตรประจำตัว (Background Theme Color)
                     </h5>
 
-                    <p className="text-slate-500 text-[10.5px] font-sans leading-relaxed">
-                      ปรับแต่งเปลี่ยนสีธีมพื้นหลังของบัตรประจำตัวการช่างตามที่คุณต้องการ โครงสร้าง ข้อมูลส่วนตัว และตำแหน่งจะยังคงความถูกต้องตามระเบียบสถาบันอย่างเสถียร
-                    </p>
-
                     {/* Themes list selection grid */}
                     <div className="grid grid-cols-1 gap-2 pt-1">
                       {[
-                        { key: 'minimal', label: 'Swiss Light (สีขาวราชการถนอมสายตา)', color: 'bg-white border-neutral-300 text-neutral-900 border shadow-xs' },
-                        { key: 'navy', label: 'Dark Navy (น้ำเงินเข้มหรูหราประจำการ)', color: 'bg-slate-900 border-indigo-505 text-white' },
-                        { key: 'dark', label: 'Stealth Black (ดำคาร์บอนพรีเมียมเข้มข่าว)', color: 'bg-zinc-950 border-orange-505 shadow-sm text-white' },
-                        { key: 'emerald', label: 'Emerald Tech (เขียวมรกตเทคโนโลยีชั้นสูง)', color: 'bg-emerald-950 border-emerald-500 text-white' },
-                        { key: 'gold', label: 'Security Gold (สีดำทองประดับเกียรติยศชั้นเอก)', color: 'bg-[#241f12] border-yellow-500 text-yellow-105' }
+                        { key: 'minimal', label: 'Swiss Light', color: 'bg-white border-neutral-300 text-neutral-900 border shadow-xs' },
+                        { key: 'navy', label: 'Dark Navy', color: 'bg-slate-900 border-indigo-505 text-white' },
+                        { key: 'dark', label: 'Stealth Black', color: 'bg-zinc-950 border-orange-505 shadow-sm text-white' },
+                        { key: 'emerald', label: 'Emerald Tech', color: 'bg-emerald-950 border-emerald-500 text-white' },
+                        { key: 'gold', label: 'Security Gold', color: 'bg-[#241f12] border-yellow-500 text-yellow-105' }
                       ].map(t => (
                         <button
                           key={t.key}
@@ -1621,14 +1588,7 @@ export default function ExamOfficeStudentPanel({
 
                 {/* ID Card Display previews col */}
                 <div className="xl:col-span-7 flex flex-col gap-5 items-center justify-center border-l border-slate-200/50 pl-2 xl:pl-6 min-h-[300px]">
-                  <h5 className="font-bold text-slate-800 text-[10.5px] uppercase tracking-wide self-start flex items-center gap-1 select-none">
-                    <span>✨</span> ตัวอย่างจำลองความแม่นยำสูง (LIVE DESIGN ACCURACY PREVIEW)
-                  </h5>
-
                   <div className="flex flex-col items-center justify-center w-full py-4 animate-fade-in">
-                    <span className="text-[9px] font-black uppercase text-[#F59E0B] tracking-wider mb-3 block bg-[#0F172A] px-3 py-1 rounded-full border border-yellow-500/10">
-                      VERTICAL PORTRAIT PASS • แนวตั้งหน้าเดียวพร้อมคิวอาร์โค้ดสแกน
-                    </span>
                     {renderIdCardVertical('screen')}
                   </div>
                 </div>

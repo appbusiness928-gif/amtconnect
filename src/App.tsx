@@ -981,16 +981,29 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    setCurrentScreen('home');
-    setLoginId('');
-    setLoginPassword('');
-    Swal.fire({
-      icon: 'info',
-      title: 'ออกจากระบบสำเร็จ',
-      text: 'ขอบคุณที่ใช้งานระบบตรวจห้องและอุปกรณ์ AMT Connect',
-      timer: 1000,
-      showConfirmButton: false
+    Swal2.fire({
+      title: 'ต้องการออกจากระบบหรือไม่?',
+      text: "คุณกำลังจะออกจากระบบ AMT CONNECT",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0F172A',
+      cancelButtonColor: '#64748B',
+      confirmButtonText: 'ใช่, ต้องการออก',
+      cancelButtonText: 'ไม่'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setCurrentUser(null);
+        setCurrentScreen('home');
+        setLoginId('');
+        setLoginPassword('');
+        Swal.fire({
+          icon: 'info',
+          title: 'ออกจากระบบสำเร็จ',
+          text: 'ขอบคุณที่ใช้งานระบบตรวจห้องและอุปกรณ์ AMT Connect',
+          timer: 1000,
+          showConfirmButton: false
+        });
+      }
     });
   };
 
@@ -1095,7 +1108,7 @@ export default function App() {
   const handleRejectUser = (userId: string) => {
     const nextUsers = db.users.filter(u => u.id !== userId);
     updateDb({ ...db, users: nextUsers });
-    Swal.fire('ปฏิเสธคำขอสำเร็จ', 'นำผู้ใช้งานออกจากบัญชีคิวคำขอลงทะเบียนแล้ว', 'info');
+    // Status change notification removed
   };
 
   const handleUpdateStudentStatus = (userId: string, newStatus: User['status']) => {
@@ -1120,42 +1133,76 @@ export default function App() {
 ด้วยความเคารพ,
 ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
 
-      Swal.fire({
-        title: 'กำลังสลักข้อมูลใหม่...',
-        text: 'กรุณารอสักครู่ ระบบกำลังปรับปรุงและส่งเมลตรวจสอบสิทธิ์',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-
       sendSystemEmail(targetUser.email, emailSubject, emailBody).then((emailRes) => {
         if (emailRes.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'เปลี่ยนสถานะสำเร็จ',
-            text: `สันทัดสถานะใหม่เป็น ${newStatus} และระบบได้จัดส่งอีเมลแจ้งถึงผู้ถือบัญชี ${targetUser.email} แล้ว`,
-            confirmButtonColor: '#0F172A'
-          });
+           // Success notification removed
         } else {
           Swal.fire({
             icon: 'warning',
-            title: 'เปลี่ยนสถานะแล้ว แต่อีเมลล้มเหลว',
-            text: `ระบบปรับข้อมูลเป็น ${newStatus} เรียบร้อย แต่อีเมลสะท้อนกลับไม่สำเร็จ: ${emailRes.message} (โปรดตรวจสอบลิงก์ Google Script API ในการควบคุม)`,
+            title: 'เสนอเปลี่ยนข้อมูลสำเร็จ แต่อีเมลขัดข้อง',
+            text: `ปรับสถานะเป็น ${status} แล้ว แต่อีเมลส่งออกแจ้งผู้เรียนไม่สำเร็จ: ${emailRes.message} (โปรดตรวจสอบ API Google Apps Script)`,
             confirmButtonColor: '#0F172A'
           });
         }
       }).catch((err) => {
         Swal.fire({
           icon: 'warning',
-          title: 'ปรับปรุงสำเร็จ แต่ส่งเมลขัดข้อง',
-          text: `เปลี่ยนสถานะเป็น ${newStatus} สำเร็จ แต่พบข้อผิดพลาด: ${err.message || err}`,
+          title: 'เปลี่ยนแล้ว แต่อีเมลขัดข้อง',
+          text: `เปลี่ยนสถานะเป็น ${status} แล้ว แต่อีเมลขัดข้องขณะเชื่อมโยง: ${err.message || err}`,
           confirmButtonColor: '#0F172A'
         });
       });
     } else {
-      Swal.fire('เปลี่ยนสถานะเรียบร้อย', `สันทัดสถานะสำเร็จเป็น ${newStatus}`, 'success');
+      // Success notification removed
     }
+  };
+
+  const handleApproveStudentStatusByManagerDEPRECATED = (studentId: string) => {
+    const student = db.users.find(u => u.id === studentId);
+
+    // Send email notification to student
+    if (student && student.email) {
+      const emailSubject = `[AMT CONNECT] ผู้บริหารได้รับการตรวจสอบและอนุมัติสถานะระดับหลักสูตร`;
+      const emailBody = `สวัสดีคุณ ${student.firstName} ${student.lastName},
+ 
+ผู้จัดการแผนกฝึกอบรม (Training Manager) ได้ลงนามและทำการอนุมัติสิทธิ์ พร้อมทั้งรับรองสถานะภาพทางทะเบียนการเรียนของคุณในระบบเรียบร้อยแล้ว:
+- รหัสนักศึกษา: ${student.id}
+- ชื่อ-นามสกุล: ${student.firstName} ${student.lastName}
+- สถานภาพล่าสุด: ✅ ${student.status} (ความเห็นชอบ: อนุมัติผ่านเกณฑ์สิทธิ์ความปลอดภัย)
+
+ขณะนี้ประวัติและสถานภาพของคุณได้รับการบันทึกยืนยันเป็นที่ประจักษ์ในศูนย์บริหารระบบจัดจ้างแล้ว คุณสามารถดำเนินการกิจกรรมขอสิทธิ์อื่นๆ ได้ทันทีค่ะ/ครับ
+
+ด้วยความเคารพ,
+ศูนย์บริหารสารสนเทศและการสอบอู่การช่างอากาศยาน AMT CONNECT`;
+
+      sendSystemEmail(student.email, emailSubject, emailBody).then((emailRes) => {
+        if (emailRes.success) {
+           // Success notification removed
+        } else {
+          Swal.fire({
+            icon: 'warning',
+            title: 'พิจารณาอนุมัติสำเร็จ แต่อีเมลขัดข้อง',
+            text: `ลงประวัติช่าง ${student.status} แล้ว แต่อีเมลรายงานภายนอกเข้าสมุดบัญชีไม่สำเร็จ: ${emailRes.message}`,
+            confirmButtonColor: '#0F172A'
+          });
+        }
+      }).catch((err) => {
+        Swal.fire({
+          icon: 'warning',
+          title: 'อนุมัติสำเร็จ แต่อีเมลขัดข้อง',
+          text: `เปลี่ยนสถานภาพทางทะเบียนเรียบร้อย แต่เครือข่ายประจบพึ่งพิงขัดข้อง: ${err.message || err}`,
+          confirmButtonColor: '#1E293B'
+        });
+      });
+    } else {
+      // Success notification removed
+    }
+  };
+
+  const handleUpdateProfile = (updatedProfile: Partial<User>) => {
+    const nextUsers = db.users.map(u => u.id === currentUser?.id ? {...u, ...updatedProfile} : u);
+    updateDb({...db, users: nextUsers});
+    setCurrentUser(prev => prev ? {...prev, ...updatedProfile} : prev);
   };
 
   const handleToggleRecordStatus = (recId: string) => {
@@ -1165,16 +1212,6 @@ export default function App() {
         : r
     );
     updateDb({ ...db, roomUsageRecords: nextRecords });
-    Swal.fire('อัปเดตบันทึกห้องสำเร็จ', 'เปลี่ยนสถานภาพยอมรับลายเซ็นสมุดส่งตรวจเสร็จสิ้น', 'success');
-  };
-
-  // --- ACTIONS FOR TRAINING STAFF/MANAGER ---
-  const handleUpdateProfile = (updatedProfile: Partial<User>) => {
-    if (!currentUser) return;
-    const nextUsers = db.users.map(u => u.id === currentUser.id ? { ...u, ...updatedProfile } : u);
-    const updatedUser = { ...currentUser, ...updatedProfile };
-    setCurrentUser(updatedUser);
-    updateDb({ ...db, users: nextUsers });
   };
 
   const handleSubmitRoomRequest = (newRequest: Omit<RoomRequest, 'id' | 'maintenanceApproved' | 'isRoomUsageRecordCreated'>): boolean => {
@@ -1403,6 +1440,10 @@ export default function App() {
     }
   };
 
+  
+
+  // --- ACTIONS FOR TRAINING STAFF/MANAGER ---
+  
   const handleApproveStudentStatusByManager = (studentId: string) => {
     const student = db.users.find(u => u.id === studentId);
 
