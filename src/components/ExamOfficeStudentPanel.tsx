@@ -857,7 +857,7 @@ export default function ExamOfficeStudentPanel({
           <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
             <span className="block text-[6.5px] text-zinc-400 font-bold uppercase">NAME-SURNAME</span>
             <div className={`text-[12.5px] font-bold tracking-tight truncate leading-tight ${idCardTheme === 'minimal' ? 'text-neutral-950' : 'text-white'}`}>
-              {editFirstNameEn && editLastNameEn ? `${editFirstNameEn} ${editLastNameEn}` : `${editFirstName} ${editLastName}`}
+              {editFirstName} {editLastName}
             </div>
             
             <div className="text-[8.5px] font-sans font-medium mt-0.5">
@@ -1061,7 +1061,7 @@ export default function ExamOfficeStudentPanel({
         {/* User Info Details - containing Name, Position, ID, and Cohort/Batch */}
         <div className="w-full text-center px-1">
           <h3 className={`font-sans font-bold text-[12px] truncate leading-tight ${t.textColor}`}>
-            {editFirstNameEn && editLastNameEn ? `${editFirstNameEn} ${editLastNameEn}` : `${editFirstName} ${editLastName}`}
+            {editFirstName} {editLastName}
           </h3>
           
           <div className="flex flex-col items-center mt-1 space-y-0.5">
