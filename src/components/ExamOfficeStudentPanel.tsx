@@ -14,7 +14,7 @@ import {
 import { alerts as Swal } from '../lib/alerts';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { getAppOriginForQR } from '../lib/api';
-import { TraceabilityToolsLogDoc } from './Documents';
+import { TraceabilityToolsLogDoc, generateAndOpenPDF } from './Documents';
 import AcademicDataSection from './AcademicDataSection';
 
 const TIME_OPTIONS = [
@@ -1394,16 +1394,34 @@ export default function ExamOfficeStudentPanel({
                   </p>
                 </div>
                 
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.print();
-                  }}
-                  className="flex items-center gap-1.5 bg-neutral-950 hover:bg-neutral-850 text-white px-4 py-2 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm self-start md:self-center shrink-0"
-                >
-                  <Printer size={13} />
-                  <span>สั่งพิมพ์บัตรประจำตัวส่วนตัว</span>
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 self-start md:self-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await generateAndOpenPDF('.print-id-card-pdf-target > div', `บัตรประจำตัว_${currentUser.firstName || 'Student'}_${currentUser.id}.pdf`, 'portrait');
+                      } catch (err) {
+                        console.error(err);
+                        window.print();
+                      }
+                    }}
+                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm"
+                  >
+                    <Award size={13} />
+                    <span>สร้างไฟล์ PDF (1:1 คมชัดสูง • แนะนำ)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.print();
+                    }}
+                    className="flex items-center gap-1.5 bg-neutral-950 hover:bg-neutral-850 text-white px-4 py-2.5 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm"
+                  >
+                    <Printer size={13} />
+                    <span>พิมพ์ผ่านเบราว์เซอร์ทั่วไป</span>
+                  </button>
+                </div>
               </div>
 
               {/* Designer controls and live card models layout */}
@@ -1465,6 +1483,11 @@ export default function ExamOfficeStudentPanel({
               {renderIdCardVertical('print')}
             </div>
 
+            {/* Off-screen high-fidelity container for PDF generation */}
+            <div className="absolute opacity-0 pointer-events-none -top-[9999px] -left-[9999px] print-id-card-pdf-target">
+              {renderIdCardVertical('print')}
+            </div>
+
             <style>{`
               @media print {
                 @page {
@@ -1477,30 +1500,11 @@ export default function ExamOfficeStudentPanel({
                   background: white !important;
                   color: black !important;
                 }
-                /* Hide header and footer */
-                header, footer {
-                  display: none !important;
-                }
-                /* Override display none for main when it contains the vertical print card */
-                main.no-print:has(.print-layout) {
-                  display: block !important;
-                  position: absolute !important;
-                  left: 0 !important;
-                  top: 0 !important;
-                  width: 100% !important;
-                  height: 105% !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  border: none !important;
-                  box-shadow: none !important;
-                  background: white !important;
-                  overflow: visible !important;
-                }
-                /* Hide everything inside the main dashboard except our print layout */
-                main.no-print:has(.print-layout) * {
+                /* Hide everything in the body by default */
+                body * {
                   visibility: hidden !important;
                 }
-                /* Specifically show print-layout and all its contents */
+                /* Specifically show our print-layout container and all children inside it */
                 .print-layout, .print-layout * {
                   visibility: visible !important;
                 }
