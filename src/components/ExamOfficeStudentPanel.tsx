@@ -1079,9 +1079,9 @@ export default function ExamOfficeStudentPanel({
           {/* QR Code */}
           <div className="flex flex-col items-center shrink-0">
             <img 
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
               alt="QR Verification" 
-              className={`border ${t.qrBorder} p-0.5 bg-white shadow-xs rounded-sm ${isPrint ? 'w-[11.5mm] h-[11.5mm]' : 'w-[44px] h-[44px]'}`} 
+              className={`border ${t.qrBorder} p-0.5 bg-white shadow-xs rounded-sm ${isPrint ? 'w-[14mm] h-[14mm]' : 'w-[54px] h-[54px]'}`} 
               referrerPolicy="no-referrer"
             />
             <span className={`text-[4.5px] font-mono tracking-widest mt-0.5 uppercase font-black ${t.descColor}`}>VERIFY QR</span>
@@ -1417,6 +1417,21 @@ export default function ExamOfficeStudentPanel({
                   <p className="text-slate-500 text-[11px] mt-1 font-sans">
                     ออกแบบ จัดหน้าตา และได้รับบัตรประจำตัวการช่างขนาดสากลพลาสติกจริง (CR-80: 8.56 ซม. x 5.40 ซม.) สัญชาติการวิชาอากาศยาน บันทึกพล็อตลงเครื่องพิมพ์ขนาด 1:1 ได้ทันที
                   </p>
+                  
+                  {/* Print custom user tip for removing browser headers and footers */}
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 font-sans space-y-1">
+                    <p className="font-extrabold flex items-center gap-1.5 text-amber-950">
+                      <span>💡</span> วิธีลบที่อยู่เว็บและวันที่ตรงมุมขอบออก (ลบส่วนหัว/ท้ายกระดาษที่เบราว์เซอร์สร้าง):
+                    </p>
+                    <ul className="list-disc pl-4 space-y-0.5 mt-1 leading-relaxed text-amber-850">
+                      <li>
+                        <strong>สำหรับ iPad/iPhone (Safari):</strong> เมื่อกดปุ่มสั่งพิมพ์แล้ว ในหน้าตั้งค่าเครื่องพิมพ์ ให้เลื่อนลงล่างสุด แล้วปิดสวิตช์ <strong>"หัวกระดาษและท้ายกระดาษ" (Headers &amp; Footers)</strong> เพื่อทำให้ขอบขาวสะอาดสะอ้าน
+                      </li>
+                      <li>
+                        <strong>สำหรับ Google Chrome / คอมพิวเตอร์:</strong> ในหน้าพรีวิวสั่งพิมพ์ ให้กด "การตั้งค่าเพิ่มเติม" (More settings) &gt; ระยะขอบ (Margins) เลือก <strong>"ไม่มี" (None)</strong> และเปิดติ๊กถูก <strong>"กราฟิกพื้นหลัง" (Background graphics)</strong>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-2 self-start md:self-center shrink-0">
@@ -1517,9 +1532,12 @@ export default function ExamOfficeStudentPanel({
               @media print {
                 @page {
                   size: portrait;
-                  margin: 0 !important;
+                  margin: 0mm !important;
                 }
-                body {
+                html, body, #root {
+                  width: 100vw !important;
+                  height: 100vh !important;
+                  overflow: hidden !important;
                   margin: 0 !important;
                   padding: 0 !important;
                   background: white !important;
@@ -1538,7 +1556,7 @@ export default function ExamOfficeStudentPanel({
                   flex-direction: column !important;
                   justify-content: center !important;
                   align-items: center !important;
-                  width: 100% !important;
+                  width: 100vw !important;
                   height: 100vh !important;
                   position: fixed !important;
                   left: 0 !important;
@@ -1547,6 +1565,7 @@ export default function ExamOfficeStudentPanel({
                   padding: 0 !important;
                   background: white !important;
                   z-index: 9999999 !important;
+                  overflow: hidden !important;
                 }
                 .physical-card-vertical {
                   width: 53.98mm !important;
@@ -1555,6 +1574,7 @@ export default function ExamOfficeStudentPanel({
                   border-radius: 3.18mm !important;
                   box-sizing: border-box !important;
                   page-break-inside: avoid !important;
+                  page-break-after: avoid !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                   margin: auto !important;
