@@ -271,6 +271,74 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     return;
   }
 
+  // Pre-open a blank window synchronously inside the user-initiated click handler to completely bypass browser popup blockers!
+  let newWindow: Window | null = null;
+  try {
+    newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>กำลังจัดเตรียมไฟล์ PDF...</title>
+          <meta charset="utf-8">
+          <style>
+            body {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              margin: 0;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              background-color: #f8fafc;
+              color: #0f172a;
+            }
+            .container {
+              text-align: center;
+              padding: 24px;
+              max-width: 420px;
+            }
+            .spinner {
+              width: 48px;
+              height: 48px;
+              border: 4px solid #0284c7;
+              border-top-color: transparent;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin: 0 auto 20px;
+            }
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+            .title {
+              font-size: 17px;
+              font-weight: 700;
+              margin-bottom: 8px;
+              color: #1e293b;
+            }
+            .subtitle {
+              font-size: 13.5px;
+              color: #64748b;
+              line-height: 1.5;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="spinner"></div>
+            <div class="title">กำลังจัดเตรียมเอกสาร PDF สถาบัน...</div>
+            <div class="subtitle">ระบบกำลังเรนเดอร์กราฟิกและแปลงข้อมูลเพื่อแสดงในหน้านี้ กรุณารอสักครู่...</div>
+          </div>
+        </body>
+        </html>
+      `);
+      newWindow.document.close();
+    }
+  } catch (e) {
+    console.warn('Failed to pre-open window:', e);
+  }
+
   Swal.fire({
     title: 'กำลังจัดเตรียมไฟล์ PDF...',
     html: `
@@ -380,22 +448,19 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
     
     // Generate direct blob url for live view/link
     const blobUrl = await worker.output('bloburl');
-    
-    // Trigger local download
-    await worker.save();
 
     Swal.fire({
-      title: 'จัดเตรียมเอกสารและดาวน์โหลดสำเร็จ!',
+      title: 'จัดเตรียมเอกสารสำเร็จ!',
       html: `
         <div class="text-center font-sans space-y-3.5 pt-2">
-          <p class="text-sm text-neutral-600">ได้ทำการจัดทำรูปเล่ม PDF และทำการดาวน์โหลดเข้าสู่เครื่องของท่านเรียบร้อยแล้ว</p>
+          <p class="text-sm text-neutral-600">ได้ทำการจัดทำรูปเล่ม PDF และเปิดแสดงในแท็บใหม่เรียบร้อยแล้ว</p>
           
           <div class="p-3 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-emerald-100">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            สถานะ: ดาวน์โหลดเอกสาร PDF สำเร็จ!
+            สถานะ: จัดทำลิงก์เอกสาร PDF สำเร็จ!
           </div>
           
-          <p class="text-[11px] text-neutral-400">กรณีที่ดาวน์โหลดไม่เริ่มทำงานโดยอัตโนมัติ หรือท่านต้องการเปิดดูผ่านเว็บเบราว์เซอร์ กรุณาคลิกปุ่มด้านล่างเพื่อแสดงเอกสาร</p>
+          <p class="text-[11px] text-neutral-400">กรณีที่หน้าต่างใหม่ไม่ปรากฏขึ้นมา หรือคุณต้องการเปิดแสดงเอกสารอีกรอบ กรุณาคลิกที่ปุ่มด้านล่างเพื่อเข้าดูทันที</p>
           
           <a href="${blobUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-all text-xs cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -415,14 +480,28 @@ export const generateAndOpenPDF = async (selector: string, filename: string, ori
       }
     });
     
-    // Auto-open in tab
-    try {
-      window.open(blobUrl, '_blank');
-    } catch (e) {
-      console.warn('Auto popup blocked:', e);
+    // Auto-open in tab by modifying location of pre-opened tab or using window.open as fallback
+    if (newWindow) {
+      try {
+        newWindow.location.href = blobUrl;
+      } catch (e) {
+        console.warn('Failed setting pre-opened tab location, falling back to window.open:', e);
+        window.open(blobUrl, '_blank');
+      }
+    } else {
+      try {
+        window.open(blobUrl, '_blank');
+      } catch (e) {
+        console.warn('Auto popup blocked:', e);
+      }
     }
   } catch (error: any) {
     console.error('PDF generation error:', error);
+    if (newWindow) {
+      try {
+        newWindow.close();
+      } catch (e) {}
+    }
     Swal.fire({
       title: 'เกิดข้อผิดพลาด',
       text: 'ไม่สามารถสร้างไฟล์ PDF มินิลิงก์ได้: ' + error.message,
