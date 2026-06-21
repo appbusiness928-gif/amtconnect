@@ -1467,35 +1467,57 @@ export default function ExamOfficeStudentPanel({
 
             <style>{`
               @media print {
+                @page {
+                  size: portrait;
+                  margin: 0 !important;
+                }
                 body {
                   margin: 0 !important;
                   padding: 0 !important;
                   background: white !important;
                   color: black !important;
                 }
-                #root, .no-print {
+                /* Hide header and footer */
+                header, footer {
                   display: none !important;
+                }
+                /* Override display none for main when it contains the vertical print card */
+                main.no-print:has(.print-layout) {
+                  display: block !important;
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  height: 105% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  background: white !important;
+                  overflow: visible !important;
+                }
+                /* Hide everything inside the main dashboard except our print layout */
+                main.no-print:has(.print-layout) * {
+                  visibility: hidden !important;
+                }
+                /* Specifically show print-layout and all its contents */
+                .print-layout, .print-layout * {
+                  visibility: visible !important;
                 }
                 .print-layout {
                   display: flex !important;
-                  flex-direction: row !important;
-                  flex-wrap: wrap !important;
-                  gap: 15mm !important;
+                  flex-direction: column !important;
                   justify-content: center !important;
                   align-items: center !important;
+                  width: 100% !important;
                   height: 100vh !important;
+                  position: fixed !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  margin: 0 !important;
                   padding: 0 !important;
                   background: white !important;
-                }
-                .physical-card {
-                  width: 85.6mm !important;
-                  height: 53.98mm !important;
-                  border: 0.5px solid #d1d5db !important;
-                  border-radius: 3.18mm !important;
-                  box-sizing: border-box !important;
-                  page-break-inside: avoid !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
+                  z-index: 9999999 !important;
                 }
                 .physical-card-vertical {
                   width: 53.98mm !important;
@@ -1506,6 +1528,7 @@ export default function ExamOfficeStudentPanel({
                   page-break-inside: avoid !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
+                  margin: auto !important;
                 }
               }
             `}</style>
