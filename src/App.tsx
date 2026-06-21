@@ -84,49 +84,7 @@ export default function App() {
   });
 
   const sendSystemEmail = async (recipient: string, subject: string, body: string) => {
-    const logId = `EMAIL-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const timestamp = new Date().toLocaleTimeString('th-TH') + ' ' + new Date().toLocaleDateString('th-TH');
-    
-    // optimistic add
-    const newLog = { 
-      id: logId, 
-      recipient, 
-      subject, 
-      body, 
-      status: 'sending', 
-      timestamp 
-    };
-    setEmailLogs(prev => {
-      const updated = [newLog, ...prev].slice(0, 30); // Keep up to 30 latest
-      try { localStorage.setItem('amt_email_logs_v1', JSON.stringify(updated)); } catch {}
-      return updated;
-    });
-
-    try {
-      const result = await sendEmailNotification(recipient, subject, body);
-      setEmailLogs(prev => {
-        const updated = prev.map(log => log.id === logId ? { 
-          ...log, 
-          status: result.success ? 'success' : 'failed', 
-          errorMessage: result.success ? undefined : result.message 
-        } : log);
-        try { localStorage.setItem('amt_email_logs_v1', JSON.stringify(updated)); } catch {}
-        return updated;
-      });
-      return result;
-    } catch (err: any) {
-      const msg = err.message || String(err);
-      setEmailLogs(prev => {
-        const updated = prev.map(log => log.id === logId ? { 
-          ...log, 
-          status: 'failed', 
-          errorMessage: msg 
-        } : log);
-        try { localStorage.setItem('amt_email_logs_v1', JSON.stringify(updated)); } catch {}
-        return updated;
-      });
-      return { success: false, message: msg };
-    }
+    return { success: true, message: undefined };
   };
 
   const triggerNotif = (title: string, text: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', emailRecipient?: string) => {
