@@ -1006,30 +1006,43 @@ export default function ExamOfficeStudentPanel({
     const isPrint = mode === 'print';
 
     const containerClass = isPrint
-      ? `${t.bgClass} physical-card-vertical relative flex flex-col justify-between items-center text-center overflow-hidden p-[4.2mm] rounded-[3mm] h-[85.6mm] w-[53.98mm] shadow-none`
-      : `${t.bgClass} w-[245px] h-[382px] select-none rounded-[14px] shadow-xl relative flex flex-col justify-between items-center text-center overflow-hidden p-4 transition-all hover:scale-101 hover:shadow-2xl`;
+      ? `${t.bgClass} physical-card-vertical relative flex flex-col justify-between items-center text-center overflow-hidden h-[85.6mm] w-[53.98mm] shadow-none`
+      : `${t.bgClass} w-[245px] h-[388px] select-none rounded-[14px] shadow-xl relative flex flex-col justify-between items-center text-center overflow-hidden transition-all hover:scale-101 hover:shadow-2xl`;
+
+    // Compact paddings to fit everything beautifully on the standard vertical layout
+    const padClass = isPrint ? 'p-[3mm] pt-[4.5mm] pb-[2.5mm]' : 'p-4 pt-5 pb-3';
 
     return (
-      <div className={containerClass} style={{ boxSizing: 'border-box' }}>
+      <div className={`${containerClass} ${padClass}`} style={{ boxSizing: 'border-box' }}>
+        {/* Subtle aircraft grid watermark background */}
+        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
         {/* Header Accent block */}
         <div className={`absolute top-0 left-0 right-0 h-1.5 ${t.stripeClass}`} />
         
         {/* School Brand */}
-        <div className="mt-2 w-full text-center">
-          <h4 className={`font-sans font-extrabold text-[12.5px] uppercase tracking-wider font-black ${t.textColor}`}>
+        <div className="w-full text-center">
+          <h4 className={`font-sans font-extrabold text-[12px] uppercase tracking-wider font-black leading-tight ${t.textColor}`}>
             {idCardDept}
           </h4>
-          <p className={`font-sans text-[7.5px] font-bold block mt-0.5 leading-tight ${t.descColor}`}>
+          <p className={`font-sans text-[7px] font-bold block mt-0.5 leading-tight ${t.descColor}`}>
             สถาบันฝึกอบรมช่างบำรุงรักษาอากาศยาน
           </p>
-          <p className={`font-mono text-[6.5px] mt-0.5 tracking-wider font-bold ${t.subDescColor}`}>
+          <p className={`font-mono text-[5.8px] mt-0.5 tracking-wider font-bold ${t.subDescColor}`}>
             AIRCRAFT MAINTENANCE TRAINING CENTER
           </p>
         </div>
 
-        {/* Photo */}
-        <div className="my-1.5 shrink-0 flex justify-center">
-          <div className={`border-2 ${t.photoBorder} rounded-xs overflow-hidden bg-neutral-100 relative ${isPrint ? 'w-[20mm] h-[24mm]' : 'w-20 h-24'}`}>
+        {/* Card Title Badge (Complete information!) */}
+        <div className="w-full flex justify-center my-0.5">
+          <div className={`px-2 py-0.5 rounded text-[7.5px] font-black uppercase tracking-wider leading-none ${t.tagClass}`}>
+            {idCardTitle}
+          </div>
+        </div>
+
+        {/* Photo Area (Compact to preserve other info layout) */}
+        <div className="shrink-0 flex justify-center my-1">
+          <div className={`border-2 ${t.photoBorder} rounded-xs overflow-hidden bg-neutral-100 relative ${isPrint ? 'w-[18mm] h-[22.5mm]' : 'w-[72px] h-[90px]'}`}>
             <img
               src={editPhoto || currentUser.photoUrl}
               alt="Photo"
@@ -1039,49 +1052,61 @@ export default function ExamOfficeStudentPanel({
           </div>
         </div>
 
-        {/* User Info Details */}
-        <div className="w-full text-center">
+        {/* User Info Details - containing Name, Position, ID, and Cohort/Batch */}
+        <div className="w-full text-center px-1">
           <h3 className={`font-sans font-extrabold text-[12px] truncate leading-tight uppercase ${t.textColor}`}>
             {editFirstName} {editLastName}
           </h3>
-          <p className={`font-sans text-[9px] font-extrabold uppercase tracking-wide mt-0.5 leading-none ${t.descColor}`}>
-            ตำแหน่ง: {currentUser.role || 'นักศึกษา'}
-          </p>
-          <p className={`font-mono text-[9px] font-bold mt-1 leading-none ${t.descColor}`}>
-            ID: {currentUser.id}
-          </p>
+          
+          <div className="flex flex-col items-center mt-1 space-y-0.5">
+            <span className={`font-sans text-[8.5px] font-extrabold uppercase tracking-wide leading-none ${t.descColor}`}>
+              ตำแหน่ง: {currentUser.role || 'นักศึกษา'}
+            </span>
+            <div className="flex items-center justify-center gap-1.5 mt-0.5">
+              <span className={`font-sans text-[8px] font-black leading-none bg-neutral-200/40 px-1 py-0.5 rounded ${t.subLabelColor}`}>
+                รุ่น {idCardCustomBatch}
+              </span>
+              <span className="text-zinc-400 text-[8px]">•</span>
+              <span className={`font-mono text-[8px] font-black tracking-tight leading-none ${t.textColor}`}>
+                ID: {currentUser.id}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* QR Code Section - styled for durability and easy scan with white bg */}
-        <div className="my-2 select-none flex flex-col items-center">
-          <img 
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
-            alt="QR Verification" 
-            className={`w-16 h-16 border ${t.qrBorder} p-1 bg-white shadow-xs rounded-md`} 
-            referrerPolicy="no-referrer"
-          />
-          <span className={`text-[6.5px] font-mono tracking-widest mt-1 uppercase font-bold ${t.descColor}`}>VERIFY QR CODE</span>
-        </div>
-
-        {/* Signature Area */}
-        <div className={`w-full border-t border-dashed ${t.dashedBorder} pt-1 flex flex-col items-center shrink-0`}>
-          {idCardShowSignature && editSig ? (
-            <img
-              src={editSig}
-              alt="ลายมือชื่อ"
-              className={`h-4.5 object-contain pointer-events-none ${t.sigClass}`}
+        {/* QR Code and Sig row side-by-side to optimize vertical space on standard vertically-oriented cards */}
+        <div className={`w-full flex items-center justify-between gap-2 border-t border-dashed ${t.dashedBorder} pt-1.5 my-1`}>
+          {/* QR Code */}
+          <div className="flex flex-col items-center shrink-0">
+            <img 
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
+              alt="QR Verification" 
+              className={`border ${t.qrBorder} p-0.5 bg-white shadow-xs rounded-sm ${isPrint ? 'w-[11.5mm] h-[11.5mm]' : 'w-[44px] h-[44px]'}`} 
               referrerPolicy="no-referrer"
             />
-          ) : (
-            <div className={`h-4.5 text-[8px] italic flex items-center justify-center ${t.descColor}`}>ไม่มีลายเซ็น</div>
-          )}
-          <span className={`text-[7px] font-sans mt-0.5 ${t.descColor}`}>ลายมือชื่อผู้ถือบัตร</span>
+            <span className={`text-[4.5px] font-mono tracking-widest mt-0.5 uppercase font-black ${t.descColor}`}>VERIFY QR</span>
+          </div>
+
+          {/* Signature Area (Right side) */}
+          <div className="flex-1 flex flex-col items-center justify-center min-w-0">
+            {idCardShowSignature && editSig ? (
+              <img
+                src={editSig}
+                alt="ลายมือชื่อ"
+                className={`object-contain pointer-events-none mt-0.5 ${t.sigClass} ${isPrint ? 'h-[4.5mm] max-w-[20mm]' : 'h-[18px] max-w-[80px]'}`}
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className={`h-[18px] text-[7px] italic flex items-center justify-center ${t.subDescColor}`}>ไม่มีลายเซ็น</div>
+            )}
+            <span className={`text-[6.5px] font-sans font-bold tracking-tight mt-1 ${t.descColor}`}>ลายมือชื่อผู้ถือบัตร</span>
+          </div>
         </div>
 
         {/* Footer stamp */}
-        <div className={`w-full flex items-center justify-between border-t ${t.footerBorder} pt-1 text-[6.5px] font-mono uppercase leading-none mb-0.5 ${t.descColor}`}>
+        <div className={`w-full flex items-center justify-between border-t ${t.footerBorder} pt-1 text-[5.5px] font-mono uppercase tracking-tight leading-none ${t.descColor}`}>
           <span>REG: {currentUser.createdAt || '23/04/2025'}</span>
-          <span>TLTC CARD</span>
+          <span>TLTC CARD v2.0</span>
         </div>
       </div>
     );
