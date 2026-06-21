@@ -642,7 +642,7 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
             {/* User Info Details */}
             <div className="w-full">
               <h3 className="font-sans font-bold text-xs text-neutral-950 truncate">
-                {user.firstNameEn && user.lastNameEn ? `${user.firstNameEn} ${user.lastNameEn}` : `${user.firstName} ${user.lastName}`}
+                {user.firstName} {user.lastName}
               </h3>
               <p className="font-sans text-[9px] font-bold text-neutral-600 uppercase tracking-wide">
                 ตำแหน่ง: {user.role}
@@ -655,12 +655,12 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
             {/* QR Code Section */}
             <div className="my-2 select-none flex flex-col items-center">
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + user.id)}`} 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + user.id)}`} 
                 alt="QR Verification" 
-                className="w-18 h-18 border border-neutral-300 p-1 bg-white shadow-xs rounded-md" 
+                className="w-12 h-12 border border-slate-200 p-0.5" 
                 referrerPolicy="no-referrer"
               />
-              <span className="text-[6.5px] text-neutral-400 font-mono tracking-widest mt-1 uppercase font-bold">VERIFY QR CODE</span>
+              <span className="text-[6px] text-neutral-400 font-mono tracking-widest mt-0.5 uppercase">VERIFY QR CODE</span>
             </div>
 
             {/* Signature Area */}

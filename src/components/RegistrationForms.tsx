@@ -22,11 +22,8 @@ export default function RegistrationForms({ onRegisterSuccess, onCancel, existin
   const [id, setId] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [firstNameEn, setFirstNameEn] = useState('');
-  const [lastNameEn, setLastNameEn] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [signature, setSignature] = useState('');
   const [instructorRole, setInstructorRole] = useState<UserRole>('Instructor');
@@ -54,11 +51,9 @@ export default function RegistrationForms({ onRegisterSuccess, onCancel, existin
 
   const getFormErrors = (): string | null => {
     if (!id.trim()) return 'กรุณาระบุรหัสประจำตัว หรือรหัสนักศึกษา';
-    if (!firstName.trim() || !lastName.trim()) return 'กรุณากรอกชื่อและนามสกุลจริง (ภาษาไทย)';
-    if (!firstNameEn.trim() || !lastNameEn.trim()) return 'กรุณากรอกชื่อและนามสกุลจริง (ภาษาอังกฤษ)';
+    if (!firstName.trim() || !lastName.trim()) return 'กรุณากรอกชื่อและนามสกุลจริง';
     if (!email.trim() || !email.includes('@')) return 'กรุณากรอกอีเมลที่ถูกต้อง';
     if (password.length < 4) return 'รหัสผ่านต้องมีความยาวอย่างน้อย 4 ตัวอักษร';
-    if (password !== confirmPassword) return 'รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง';
     if (!photoUrl) return 'กรุณาอัพโหลดรูปถ่ายผู้ใช้งานเพื่อสร้างบัตรประจำตัวการช่าง';
     if (!signature) return 'กรุณาเขียนลายเซ็นรับรองข้อมูลของคุณ';
     
@@ -92,8 +87,6 @@ export default function RegistrationForms({ onRegisterSuccess, onCancel, existin
       id: id.trim(),
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      firstNameEn: firstNameEn.trim(),
-      lastNameEn: lastNameEn.trim(),
       email: email.trim(),
       password,
       photoUrl,
@@ -213,24 +206,24 @@ export default function RegistrationForms({ onRegisterSuccess, onCancel, existin
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-bold text-neutral-700 mb-1">ชื่อจริง (ภาษาไทย) *</label>
+            <label className="block text-[11px] font-bold text-neutral-700 mb-1">ชื่อจริง (First Name) *</label>
             <input
               id="firstNameInput"
               type="text"
               required
-              placeholder="กรอกชื่อจริงภาษาไทย เช่น ชัยพล"
+              placeholder="กรอกชื่อจริงของคุณ"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-neutral-700 mb-1">นามสกุล (ภาษาไทย) *</label>
+            <label className="block text-[11px] font-bold text-neutral-700 mb-1">นามสกุล (Last Name) *</label>
             <input
               id="lastNameInput"
               type="text"
               required
-              placeholder="กรอกนามสกุลภาษาไทย เช่น ลาแหล่งเจริญ"
+              placeholder="กรอกนามสกุลของคุณ"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs"
@@ -240,50 +233,22 @@ export default function RegistrationForms({ onRegisterSuccess, onCancel, existin
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-bold text-neutral-700 mb-1">ชื่อจริงภาษาอังกฤษ (First Name EN) *</label>
-            <input
-              id="firstNameEnInput"
-              type="text"
-              required
-              placeholder="กรอกชื่อจริงภาษาอังกฤษ เช่น Chaiyaphol"
-              value={firstNameEn}
-              onChange={(e) => setFirstNameEn(e.target.value)}
-              className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs font-mono"
-            />
+            <label className="block text-[11px] font-bold text-neutral-700 mb-1">อีเมลผู้ติดต่อ (Email) *</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
+                <Mail size={12} />
+              </span>
+              <input
+                id="regEmailInput"
+                type="email"
+                required
+                placeholder="เช่น student@amt.ac.th"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-neutral-300 pl-8 pr-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs font-mono"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-[11px] font-bold text-neutral-700 mb-1">นามสกุลภาษาอังกฤษ (Last Name EN) *</label>
-            <input
-              id="lastNameEnInput"
-              type="text"
-              required
-              placeholder="กรอกนามสกุลภาษาอังกฤษ เช่น Lalaengcharoen"
-              value={lastNameEn}
-              onChange={(e) => setLastNameEn(e.target.value)}
-              className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs font-mono"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-[11px] font-bold text-neutral-700 mb-1">อีเมลผู้ติดต่อ (Email) *</label>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
-              <Mail size={12} />
-            </span>
-            <input
-              id="regEmailInput"
-              type="email"
-              required
-              placeholder="เช่น student@amt.ac.th"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-neutral-300 pl-8 pr-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs font-mono"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[11px] font-bold text-neutral-700 mb-1">รหัสผ่านสำหรับล็อกอินเข้าใช้ระบบ *</label>
             <div className="relative">
@@ -300,33 +265,6 @@ export default function RegistrationForms({ onRegisterSuccess, onCancel, existin
                 className="w-full border border-neutral-300 pl-8 pr-3 py-2 rounded focus:outline-none focus:border-neutral-900 text-xs font-mono"
               />
             </div>
-          </div>
-          <div>
-            <label className="block text-[11px] font-bold text-neutral-700 mb-1">ยืนยันรหัสผ่านเพื่อความถูกต้อง *</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
-                <Key size={12} />
-              </span>
-              <input
-                id="regConfirmPasswordInput"
-                type="password"
-                required
-                placeholder="กรอกรหัสผ่านซ้ำอีกครั้ง"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`w-full border px-3 py-2 rounded pl-8 pr-3 focus:outline-none text-xs font-mono ${
-                  confirmPassword && password !== confirmPassword 
-                    ? 'border-red-500 focus:border-red-500 bg-red-50' 
-                    : 'border-neutral-300 focus:border-neutral-900'
-                }`}
-              />
-            </div>
-            {confirmPassword && password !== confirmPassword && (
-              <p className="text-red-500 text-[10px] mt-1 font-sans font-bold">❌ รหัสผ่านไม่ตรงกัน</p>
-            )}
-            {confirmPassword && password === confirmPassword && (
-              <p className="text-green-600 text-[10px] mt-1 font-sans font-bold">✅ รหัสผ่านตรงกันถูกต้อง</p>
-            )}
           </div>
         </div>
 

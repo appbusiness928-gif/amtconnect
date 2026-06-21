@@ -19,7 +19,6 @@ import {
   syncWithGoogleSheets,
   pullFromGoogleSheets,
   DEFAULT_GOOGLE_SCRIPT_URL,
-  sendEmailNotification,
   APIService
 } from '../lib/api';
 import { TraceabilityToolsLogDoc } from './Documents';
@@ -320,201 +319,44 @@ export default function AdminPanel({
       </div>
 
       {/* Admin Action Sub-navigation tabs */}
-      <div className="flex flex-wrap bg-white hover:bg-slate-50/50 p-1 rounded-xl border border-slate-200 shadow-sm gap-1 items-center overflow-x-auto shrink-0 md:flex-row flex-col">
-        <div className="flex gap-1 overflow-x-auto w-full md:w-auto">
-          <button
-            id="adminUsersTabBtn"
-            onClick={() => setSubTab('users')}
-            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg font-sans font-bold text-center text-xs transition-all cursor-pointer whitespace-nowrap ${
-              subTab === 'users' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            จัดสิทธิ์และรายชื่อคนเข้าใช้
-          </button>
-          <button
-            id="adminRoomsTabBtn"
-            onClick={() => setSubTab('rooms')}
-            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg font-sans font-bold text-center text-xs transition-all cursor-pointer whitespace-nowrap ${
-              subTab === 'rooms' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            ตรวจสอบสถานะห้องพักวันนี้
-          </button>
-          <button
-            id="adminRecordsTabBtn"
-            onClick={() => setSubTab('records')}
-            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg font-sans font-bold text-center text-xs transition-all cursor-pointer whitespace-nowrap ${
-              subTab === 'records' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            เอกสารทั้งหมด
-          </button>
-          <button
-            id="adminVerifyTabBtn"
-            onClick={() => setSubTab('verify')}
-            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg font-sans font-bold text-center text-xs transition-all cursor-pointer whitespace-nowrap ${
-              subTab === 'verify' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            สแกนกล้องตรวจสอบสิทธิ์
-          </button>
-        </div>
-
+      <div className="flex bg-white hover:bg-slate-50/50 p-1 rounded-xl border border-slate-200 shadow-sm gap-1 overflow-x-auto shrink-0">
+        <button
+          id="adminUsersTabBtn"
+          onClick={() => setSubTab('users')}
+          className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg font-sans font-bold text-center text-xs transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'users' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          จัดสิทธิ์และรายชื่อคนเข้าใช้
+        </button>
+        <button
+          id="adminRoomsTabBtn"
+          onClick={() => setSubTab('rooms')}
+          className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg font-sans font-bold text-center text-xs transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'rooms' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          ตรวจสอบสถานะห้องพักวันนี้
+        </button>
+        <button
+          id="adminRecordsTabBtn"
+          onClick={() => setSubTab('records')}
+          className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg font-sans font-bold text-center text-xs transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'records' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          เอกสารทั้งหมด
+        </button>
+        <button
+          id="adminVerifyTabBtn"
+          onClick={() => setSubTab('verify')}
+          className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg font-sans font-bold text-center text-xs transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'verify' ? 'bg-[#0F172A] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          สแกนกล้องตรวจสอบสิทธิ์
+        </button>
       </div>
-
-      {showSheetsConfig && (
-        <div id="sheetsConfigContainer" className="bg-white border-2 border-indigo-600 rounded-xl p-5 shadow-sm animate-fade-in space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Settings className="text-indigo-600" size={18} />
-              <h3 className="font-sans font-extrabold text-slate-800 text-sm">การตั้งค่า Google Apps Script Web App</h3>
-            </div>
-            <button 
-              type="button"
-              onClick={() => setShowSheetsConfig(false)}
-              className="text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer"
-            >
-              ✕ ปิดคู่มือ
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="sheetsScriptUrlInput" className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                ลิงก์ Google Apps Script Web App URL บัญชีของท่าน:
-              </label>
-              <div className="flex md:flex-row flex-col gap-2">
-                <input
-                  id="sheetsScriptUrlInput"
-                  type="text"
-                  value={sheetsUrl}
-                  onChange={(e) => setSheetsUrl(e.target.value)}
-                  placeholder="https://script.google.com/macros/s/.../exec"
-                  className="flex-1 border border-slate-300 p-2 rounded-lg text-xs font-mono focus:outline-indigo-600"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSheetsUrl(DEFAULT_GOOGLE_SCRIPT_URL);
-                    saveGoogleScriptUrl(DEFAULT_GOOGLE_SCRIPT_URL);
-                    Swal.fire('คืนค่าสำเร็จ', 'คืนค่ากลับเป็น URL เริ่มต้นของระบบเรียบร้อยแล้ว', 'info');
-                  }}
-                  className="px-3 py-2 border border-slate-300 text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg text-[11px] font-bold cursor-pointer whitespace-nowrap transition-colors"
-                >
-                  ใช้ค่าธรรมดาของระบบ
-                </button>
-              </div>
-              <p className="text-[10.5px] text-slate-550 mt-1 pl-1">
-                หลังจากนำสคริปต์ไป Deploy บน Google Account ของสถาบันท่านแล้ว โปรดคัดลอก Web App URL (ลงท้ายด้วย /exec) มาวางด้านบนนี้เพื่อปลดล็อกการส่งอีเมลผ่านโควตาของคุณโดยไม่ต้องอิงกับระบบสาธารณะของเรา
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 pt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!sheetsUrl.trim().startsWith('https://script.google.com/')) {
-                    Swal.fire('ลิ้งก์ไม่ถูกต้อง', 'รูปแบบ Web App URL ไม่ถูกต้อง (ต้องขึ้นต้นด้วย https://script.google.com/)', 'error');
-                    return;
-                  }
-                  saveGoogleScriptUrl(sheetsUrl);
-                  Swal.fire('บันทึกสำเร็จ!', 'อัปเดตลิ้งก์คำสั่งส่งงาน Google Apps Script เข้าสู่เบราว์เซอร์ of ท่านเรียบร้อยแล้ว', 'success');
-                }}
-                className="px-4 py-2 bg-indigo-600 text-white font-bold hover:bg-indigo-750 rounded-lg text-xs cursor-pointer shadow-3xs transition-colors"
-              >
-                บันทึกการตั้งค่าลิงก์
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    Swal.fire({
-                      title: 'กำลังตรวจสอบการเชื่อมต่อ...',
-                      allowOutsideClick: false,
-                      didOpen: () => { Swal.showLoading(); }
-                    });
-                    const res = await pullFromGoogleSheets();
-                    if (res) {
-                      Swal.fire('เชื่อมต่อสำเร็จ!', 'แอปสามารถแลกเปลี่ยนข้อมูลและอ่าน/เขียนตารางสารบบชีตได้เป็นปกติ', 'success');
-                    } else {
-                      Swal.fire('เชื่อมต่อขัดข้อง', 'ไม่สามารถเชื่อมโยง API ได้ กรุณาตรวจสอบว่าสคริปต์ได้รับการปรับใช้ถูกต้อง และตั้งค่าบุคคลเข้าถึงเป็น Anyone (ทุกคน)', 'error');
-                    }
-                  } catch (err: any) {
-                    Swal.fire('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถติดต่อไปยัง URL ดังกล่าวได้', 'error');
-                  }
-                }}
-                className="px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-bold hover:bg-slate-250 rounded-lg text-xs cursor-pointer transition-colors"
-              >
-                ทดสอบดึงตาราง (Sync Sheets Check)
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  Swal.fire({
-                    title: 'ส่งอีเมลทดสอบ',
-                    text: `ต้องการทดลองส่งอีเมลจำลองแจ้งเตือนไปยังที่อยู่คุณ: ${currentUser.email} หรือไม่?`,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'ตกลง, ลองส่งอีเมล',
-                    cancelButtonText: 'ยกเลิก',
-                  }).then(async (choice) => {
-                    if (choice.isConfirmed) {
-                      Swal.fire({
-                        title: 'กำลังส่งเมลทดสอบ...',
-                        allowOutsideClick: false,
-                        didOpen: () => { Swal.showLoading(); }
-                      });
-                      try {
-                        const res = await sendEmailNotification(
-                          currentUser.email,
-                          `[AMT CONNECT TEST] ตรวจสอบระบบรับส่งข้อความแจ้งเตือน`,
-                          `สวัสดีคุณ ${currentUser.firstName} ${currentUser.lastName},\n\nนี่คือข้อความทดสอบจากเว็บบอร์ดระบบบริหารจัดการ AMT CONNECT เพื่อทดสอบความลื่นไหลในการทำงานร่วมกับ Google Apps Script Web App\n\nหากคุณได้รับข้อความแจ้งเตือนฉบับนี้เข้ากล่องอีเมลเรียบร้อยแล้ว แสดงว่าการเชื่อมโยงอีเมลของคุณพร้อมสำหรับการใช้งานจริง 100% แล้วค่ะ/ครับ!\n\nผู้ทดสอบ: ${currentUser.firstName} ${currentUser.lastName} (${currentUser.role})\nสคริปต์ที่เรียกใช้: ${sheetsUrl}\nเวลาทดสอบระบบ: ${new Date().toLocaleString('th-TH')}`
-                        );
-                        if (res.success) {
-                          Swal.fire('ส่งสำเร็จ!', `ระบบส่งอีเมลทดสอบระบบไปยัง ${currentUser.email} เรียบร้อยแล้ว โปรดเข้าไปตรวจสอบที่กล่องขาเข้าผู้ใช้หรือส่วนของสแปมเพื่อยืนยันสิทธิ์ทางการเรียน`, 'success');
-                        } else {
-                          Swal.fire('ส่งล้มเหลว', `รายละเอียดข้อผิดพลาด: ${res.message}`, 'error');
-                        }
-                      } catch (err: any) {
-                        Swal.fire('จุดบกพร่อง', `รายละเอียดขัดข้อง: ${err.message || err}`, 'error');
-                      }
-                    }
-                  });
-                }}
-                className="px-4 py-2 bg-emerald-600 text-white font-bold hover:bg-emerald-700 rounded-lg text-xs cursor-pointer shadow-3xs transition-colors"
-              >
-                ทดลองส่งเมลทดสอบ (Test Safe Mail)
-              </button>
-            </div>
-
-            <div className="border-t border-slate-100 pt-3">
-              <details className="group">
-                <summary className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-1">
-                  <span className="transition-transform group-open:rotate-90">▶</span>
-                  <span>คลิกชม: วิธีการจัดแจงเชื่อมโยง Google Apps Script ของท่าน (Step-by-Step)</span>
-                </summary>
-                <div className="mt-2 text-[10.5px] text-slate-600 space-y-2 pl-4">
-                  <p>1. เปิดบัญชี Google ของท่าน จากนั้นเข้าสู่หน้าต่าง <a href="https://script.google.com" target="_blank" rel="noreferrer" className="text-blue-600 underline">Google Apps Script Console</a></p>
-                  <p>2. นำข้อมูลในไฟล์ <strong>google-apps-script-code.gs</strong> จากแผงฝั่งซ้ายของระบบผู้สร้างท่าน ไปคัดลอกวางทับแทนที่สคริปต์ทั้งหมดในโครงการของกูเกิล</p>
-                  <p>3. แก้ไขข้อความในสคริปต์ตรงจุดกำหนด URL ตารางสเปรดชีตให้เป็นของท่านเอง พร้อมทั้งกดบันทึกโครงการ</p>
-                  <p>4. คลิกเมนู <strong>การทำให้ใช้งานได้ (Deploy) &gt; การกำหนดค่าการทำให้ใช้งานได้ใหม่ (New Deployment)</strong></p>
-                  <p>5. เลือกการปรับใช้เป็นประเภท <strong>"แอปพลิเคชันเว็บ" (Web App)</strong></p>
-                  <p>6. ตั้งค่าการเรียกใช้งาน 2 ตัวแปรหลักดังนี้:
-                    <ul className="list-disc pl-5 mt-1 space-y-1">
-                      <li><strong>เรียกใช้เป็น (Execute as):</strong> ฉัน (อีเมลสถาบัน/ส่วนตัวของคุณ)</li>
-                      <li><strong>ผู้ที่มีสิทธิ์เข้าถึง (Who has access):</strong> ทุกคน (Anyone)</li>
-                    </ul>
-                  </p>
-                  <p>7. คลิกปุ่ม <strong>ทำให้ใช้งานได้ (Deploy)</strong> แล้วคลิกให้สิทธิ์ความปลอดภัยเข้าถึงบัญชี (Authorize Access)</p>
-                  <p>8. ให้คัดลอก <strong>"URL ของแอปพลิเคชันเว็บ" (Web App URL)</strong> ที่ได้รับ นำมาวางลงในกล่องกรอกด้านบนสุด และคลิกบันทึกได้ทันที!</p>
-                </div>
-              </details>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Subtab content 1: USERS */}
       {subTab === 'users' && (

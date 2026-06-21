@@ -14,7 +14,7 @@ import {
 import { alerts as Swal } from '../lib/alerts';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { getAppOriginForQR } from '../lib/api';
-import { TraceabilityToolsLogDoc, generateAndOpenPDF } from './Documents';
+import { TraceabilityToolsLogDoc } from './Documents';
 import AcademicDataSection from './AcademicDataSection';
 
 const TIME_OPTIONS = [
@@ -126,16 +126,12 @@ export default function ExamOfficeStudentPanel({
 
   const handleShowScheduleDetails = (cs: ClassSchedule, date: Date) => {
     const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    const sTime = cs.startTime || '08:30';
-    const eTime = cs.endTime || '16:30';
     Swal.fire({
       title: `<span class="text-[10px] font-sans font-extrabold uppercase text-neutral-400 block tracking-widest mb-1">รายละเอียดชั่วโมงวิชาเรียน</span> <span class="font-sans font-black text-sm text-neutral-950">${cs.subjectCode}</span>`,
       html: `
         <div class="text-left font-sans text-xs space-y-2 py-2 mt-2 border-t border-dashed border-neutral-200">
           <p class="font-bold text-neutral-950">ชื่อวิชาเรียน: <span class="font-medium text-neutral-700">${cs.subjectName}</span></p>
           <p class="font-bold text-neutral-950">วันสอนหลักประจำสัปดาห์: <span class="font-medium text-neutral-700">วัน${cs.dayOfWeek}</span></p>
-          <p class="font-bold text-neutral-950">เวลาเรียนทั้งหมด: <span class="font-bold text-emerald-750 font-mono">${sTime} - ${eTime} น.</span></p>
-          <p class="font-bold text-neutral-950">ช่วงเวลาพักเที่ยง: <span class="font-bold text-yellow-800 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">12:30 น. (พักเบรกกลางวัน)</span></p>
           <p class="font-bold text-neutral-950 font-mono">กลุ่มเป้าหมายผู้สอน: <span class="font-medium text-neutral-700">รุ่นนักศึกษา ${cs.batch}</span></p>
           <p class="font-bold text-neutral-950">ช่วงกำหนดจัดเรียนสอน: <span class="font-medium text-neutral-700">${cs.startDate} ถึง ${cs.endDate}</span></p>
           <p class="font-bold text-neutral-950">อาจารย์ผู้รับผิดชอบชี้สอน: <span class="font-medium text-neutral-700">${cs.instructorName}</span></p>
@@ -189,8 +185,6 @@ export default function ExamOfficeStudentPanel({
   const [schDays, setSchDays] = useState<('จันทร์' | 'อังคาร' | 'พุธ' | 'พฤหัส' | 'ศุกร์' | 'เสาร์' | 'อาทิตย์')[]>(['จันทร์']);
   const [schStart, setSchStart] = useState('');
   const [schEnd, setSchEnd] = useState('');
-  const [schStartTime, setSchStartTime] = useState('08:30');
-  const [schEndTime, setSchEndTime] = useState('16:30');
   const [schTeacher, setSchTeacher] = useState('');
 
   // Auto-populate instructor name for teaching schedules if they are the instructor
@@ -362,27 +356,14 @@ export default function ExamOfficeStudentPanel({
   const [tableDate, setTableDate] = useState(new Date().toISOString().split('T')[0]);
   const [editFirstName, setEditFirstName] = useState(currentUser.firstName);
   const [editLastName, setEditLastName] = useState(currentUser.lastName);
-  const [editFirstNameEn, setEditFirstNameEn] = useState(currentUser.firstNameEn || '');
-  const [editLastNameEn, setEditLastNameEn] = useState(currentUser.lastNameEn || '');
   const [editEmail, setEditEmail] = useState(currentUser.email);
   const [editPassword, setEditPassword] = useState(currentUser.password || '');
   const [editPhoto, setEditPhoto] = useState(currentUser.photoUrl);
   const [editSig, setEditSig] = useState(currentUser.signature);
 
-  // Custom ID Card state hooks
-  const idCardLayout = 'vertical';
-  const [idCardTheme, setIdCardTheme] = useState<'official' | 'navy' | 'dark' | 'emerald' | 'gold' | 'minimal'>('minimal');
-  const [idCardDept, setIdCardDept] = useState('AMT CONNECT');
-  const [idCardTitle, setIdCardTitle] = useState(currentUser.role === 'นักศึกษา' ? 'STUDENT IDENTIFICATION' : 'AIRCRAFT INSTRUCTOR PASS');
-  const [idCardShowSignature, setIdCardShowSignature] = useState(true);
-  const [idCardShowBarcode, setIdCardShowBarcode] = useState(true);
-  const [idCardCustomBatch, setIdCardCustomBatch] = useState(currentUser.batch || studentBatch || '67');
-
   const handleCancelEditProfile = () => {
     setEditFirstName(currentUser.firstName);
     setEditLastName(currentUser.lastName);
-    setEditFirstNameEn(currentUser.firstNameEn || '');
-    setEditLastNameEn(currentUser.lastNameEn || '');
     setEditEmail(currentUser.email);
     setEditPassword(currentUser.password || '');
     setEditPhoto(currentUser.photoUrl);
@@ -399,8 +380,6 @@ export default function ExamOfficeStudentPanel({
     onUpdateProfile({
       firstName: editFirstName,
       lastName: editLastName,
-      firstNameEn: editFirstNameEn,
-      lastNameEn: editLastNameEn,
       email: editEmail,
       password: editPassword,
       photoUrl: editPhoto,
@@ -574,20 +553,18 @@ export default function ExamOfficeStudentPanel({
       return;
     }
 
-    const schedulesToSubmit = schDays.map((day, index) => ({
-      id: `SCH-${Date.now()}-${index}`,
-      batch: schBatch,
-      subjectCode: schCode,
-      subjectName: schName,
-      dayOfWeek: day,
-      startDate: schStart,
-      endDate: schEnd,
-      instructorName: schTeacher,
-      startTime: schStartTime || '08:30',
-      endTime: schEndTime || '16:30',
-    }));
-
-    onAddSchedule(schedulesToSubmit);
+    schDays.forEach((day, index) => {
+      onAddSchedule({
+        id: `SCH-${Date.now()}-${index}`,
+        batch: schBatch,
+        subjectCode: schCode,
+        subjectName: schName,
+        dayOfWeek: day,
+        startDate: schStart,
+        endDate: schEnd,
+        instructorName: schTeacher,
+      });
+    });
 
     setSchCode('');
     setSchName('');
@@ -712,410 +689,6 @@ export default function ExamOfficeStudentPanel({
     setBorrowSignature('');
     setScannedTool(null);
     Swal.fire({ icon: 'success', title: 'เบิกจ่ายเครื่องมือสำเร็จ', text: 'อุปกรณ์ถูกโอนย้ายสถานะ และสิทธิ์ในการพายึดเรียบร้อย', confirmButtonColor: '#171717' });
-  };
-
-  const getThemeStyles = () => {
-    switch (idCardTheme) {
-      case 'official':
-        return {
-          bgClass: 'bg-white text-neutral-950 border border-neutral-300',
-          textColor: 'text-neutral-950',
-          descColor: 'text-neutral-500',
-          subDescColor: 'text-neutral-400',
-          tagClass: 'bg-neutral-950 text-white font-extrabold',
-          stripeClass: 'bg-neutral-950',
-          labelColor: 'text-neutral-500',
-          subLabelColor: 'text-neutral-950 font-extrabold',
-          photoBorder: 'border-neutral-950',
-          dashedBorder: 'border-neutral-300',
-          footerBorder: 'border-neutral-250',
-          qrBorder: 'border-neutral-300',
-          sigClass: 'filter grayscale mix-blend-multiply'
-        };
-      case 'dark':
-        return {
-          bgClass: 'bg-gradient-to-br from-zinc-950 via-zinc-900 to-neutral-900 text-white border border-zinc-700/50',
-          textColor: 'text-white',
-          descColor: 'text-zinc-400',
-          subDescColor: 'text-zinc-500',
-          tagClass: 'bg-orange-600 text-orange-100 font-extrabold',
-          stripeClass: 'bg-orange-500',
-          labelColor: 'text-zinc-400',
-          subLabelColor: 'text-orange-400 font-extrabold',
-          photoBorder: 'border-orange-500',
-          dashedBorder: 'border-zinc-800',
-          footerBorder: 'border-zinc-800',
-          qrBorder: 'border-zinc-750',
-          sigClass: 'invert opacity-95'
-        };
-      case 'emerald':
-        return {
-          bgClass: 'bg-gradient-to-br from-slate-950 via-emerald-950 to-teal-950 text-white border border-emerald-800/40',
-          textColor: 'text-white',
-          descColor: 'text-emerald-300',
-          subDescColor: 'text-emerald-500',
-          tagClass: 'bg-emerald-600 text-emerald-100 font-extrabold',
-          stripeClass: 'bg-emerald-500',
-          labelColor: 'text-emerald-300',
-          subLabelColor: 'text-emerald-400 font-extrabold',
-          photoBorder: 'border-emerald-500',
-          dashedBorder: 'border-emerald-900',
-          footerBorder: 'border-emerald-900',
-          qrBorder: 'border-emerald-800',
-          sigClass: 'invert opacity-95'
-        };
-      case 'gold':
-        return {
-          bgClass: 'bg-gradient-to-br from-[#121212] via-[#241f12] to-[#121212] text-yellow-105 border border-yellow-800/50',
-          textColor: 'text-yellow-100',
-          descColor: 'text-yellow-500/80',
-          subDescColor: 'text-yellow-600/50',
-          tagClass: 'bg-yellow-650 text-slate-950 font-black',
-          stripeClass: 'bg-yellow-650',
-          labelColor: 'text-yellow-500/80',
-          subLabelColor: 'text-yellow-400 font-extrabold',
-          photoBorder: 'border-yellow-650',
-          dashedBorder: 'border-yellow-900/40',
-          footerBorder: 'border-yellow-905/30',
-          qrBorder: 'border-yellow-902/50',
-          sigClass: 'invert opacity-95'
-        };
-      case 'minimal':
-        return {
-          bgClass: 'bg-[#fafafa] text-neutral-900 border-2 border-neutral-850',
-          textColor: 'text-neutral-900',
-          descColor: 'text-neutral-500',
-          subDescColor: 'text-neutral-400',
-          tagClass: 'bg-neutral-900 text-white font-extrabold',
-          stripeClass: 'bg-neutral-800',
-          labelColor: 'text-neutral-500',
-          subLabelColor: 'text-neutral-900 font-extrabold',
-          photoBorder: 'border-neutral-900',
-          dashedBorder: 'border-neutral-300',
-          footerBorder: 'border-neutral-250',
-          qrBorder: 'border-neutral-300',
-          sigClass: 'filter grayscale mix-blend-multiply'
-        };
-      case 'navy':
-      default:
-        return {
-          bgClass: 'bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white border border-slate-700/50',
-          textColor: 'text-white',
-          descColor: 'text-indigo-300',
-          subDescColor: 'text-indigo-500',
-          tagClass: 'bg-blue-600 text-blue-50 font-extrabold',
-          stripeClass: 'bg-blue-500',
-          labelColor: 'text-indigo-300',
-          subLabelColor: 'text-yellow-400 font-extrabold',
-          photoBorder: 'border-blue-500',
-          dashedBorder: 'border-slate-850',
-          footerBorder: 'border-slate-850',
-          qrBorder: 'border-slate-700',
-          sigClass: 'invert opacity-95'
-        };
-    }
-  };
-
-  const renderIdCardFront = (mode: 'screen' | 'print') => {
-    const t = getThemeStyles();
-    const isPrint = mode === 'print';
-    const containerClass = isPrint
-      ? `${t.bgClass} physical-card relative flex flex-col justify-between overflow-hidden p-[4.2mm] rounded-[3mm]`
-      : `${t.bgClass} w-[340px] h-[215px] select-none rounded-2xl shadow-xl relative flex flex-col justify-between overflow-hidden p-4 transition-all hover:scale-101 hover:shadow-2xl`;
-
-    return (
-      <div className={containerClass} style={{ boxSizing: 'border-box' }}>
-        {/* Subtle aircraft grid watermark background */}
-        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-        
-        {/* Card Header */}
-        <div className="flex justify-between items-start z-10 w-full">
-          <div className="flex flex-col text-left">
-            <span className={`text-[8.5px] font-black uppercase tracking-wider leading-tight ${idCardTheme === 'minimal' ? 'text-black font-extrabold' : 'text-slate-200'}`}>
-              {idCardDept}
-            </span>
-            <span className="text-[6.5px] font-mono font-bold tracking-widest text-[#F59E0B] uppercase">
-              AIRCRAFT MAINTENANCE SYSTEM
-            </span>
-          </div>
-          <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${t.tagClass}`}>
-            {idCardTitle}
-          </div>
-        </div>
-
-        {/* Card Body */}
-        <div className="flex gap-3 my-1 items-center flex-1 z-10 w-full">
-          <div className="relative shrink-0 w-[58px] h-[72px] border-2 border-white/80 rounded overflow-hidden shadow-md bg-stone-100">
-            <img 
-              src={editPhoto || currentUser.photoUrl} 
-              alt="Photo" 
-              className="w-full h-full object-cover" 
-              referrerPolicy="no-referrer"
-            />
-          </div>
-
-          <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
-            <span className="block text-[6.5px] text-zinc-400 font-bold uppercase">NAME-SURNAME</span>
-            <div className={`text-[12.5px] font-bold tracking-tight truncate leading-tight ${idCardTheme === 'minimal' ? 'text-neutral-950' : 'text-white'}`}>
-              {editFirstNameEn && editLastNameEn ? `${editFirstNameEn} ${editLastNameEn}` : `${editFirstName} ${editLastName}`}
-            </div>
-            
-            <div className="text-[8.5px] font-sans font-medium mt-0.5">
-              <span className="text-zinc-400 uppercase text-[6.5px] block font-bold">POSITION</span>
-              <span className={`font-black ${idCardTheme === 'minimal' ? 'text-neutral-800 text-xs font-bold' : 'text-white'}`}>{currentUser.role || 'นักศึกษา'}</span>
-            </div>
-
-            {/* Batch & Code details info */}
-            <div className="grid grid-cols-2 gap-2 mt-1 border-t border-dashed border-white/20 pt-1">
-              <div>
-                <span className="block text-[5.5px] text-zinc-400 font-bold uppercase">COHORT / BATCH</span>
-                <span className={`block font-mono text-[9px] font-extrabold ${t.subLabelColor}`}>
-                  รุ่น {idCardCustomBatch}
-                </span>
-              </div>
-              <div>
-                <span className="block text-[5.5px] text-zinc-400 font-bold uppercase">IDENTIFICATION</span>
-                <span className={idCardTheme === 'minimal' ? "block font-mono text-[9px] font-extrabold text-neutral-900" : "block font-mono text-[9px] font-extrabold text-white"}>
-                  {currentUser.id}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Card Footer */}
-        <div className="flex justify-between items-end border-t border-dashed border-white/20 pt-1 mt-0.5 z-10 w-full">
-          <div>
-            {idCardShowBarcode && (
-              <div className="bg-white p-0.5 rounded flex flex-col items-center select-none scale-90 origin-left">
-                <div className="flex gap-[0.8px] h-3 items-center">
-                  <span className="w-[1.2px] h-full bg-black"></span>
-                  <span className="w-[0.6px] h-full bg-black"></span>
-                  <span className="w-[1px] h-full bg-black"></span>
-                  <span className="w-[2px] h-full bg-black"></span>
-                  <span className="w-[0.6px] h-full bg-black"></span>
-                  <span className="w-[1.2px] h-full bg-black"></span>
-                  <span className="w-[1px] h-full bg-black"></span>
-                  <span className="w-[2px] h-full bg-black"></span>
-                  <span className="w-[0.6px] h-full bg-black"></span>
-                  <span className="w-[1.2px] h-full bg-black"></span>
-                </div>
-                <span className="text-[4.5px] font-mono leading-none font-bold text-black select-none">
-                  *{currentUser.id}*
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="text-right">
-            {idCardShowSignature && editSig && (
-              <div className="relative inline-block mr-1 text-center">
-                <img 
-                  src={editSig} 
-                  alt="Sign" 
-                  className={`h-5 object-contain bg-transparent ${idCardTheme === 'minimal' ? 'brightness-50' : 'invert opacity-95'} mx-auto`} 
-                  referrerPolicy="no-referrer"
-                />
-                <div className="w-[45px] h-[0.5px] bg-white/40 border-t border-dashed mt-0.5"></div>
-                <span className="block text-[5px] text-slate-400 font-bold uppercase tracking-wider">SIGNATURE</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Dynamic decorative colored safety stripe at the very bottom */}
-        <div className={`absolute bottom-0 left-0 right-0 h-1.5 ${t.stripeClass}`} />
-      </div>
-    );
-  };
-
-  const renderIdCardBack = (mode: 'screen' | 'print') => {
-    const t = getThemeStyles();
-    const isPrint = mode === 'print';
-    const containerClass = isPrint
-      ? `${t.bgClass} physical-card relative flex flex-col justify-between overflow-hidden p-[4.2mm] rounded-[3mm]`
-      : `${t.bgClass} w-[340px] h-[215px] select-none rounded-2xl shadow-xl relative flex flex-col justify-between overflow-hidden p-4 transition-all hover:scale-101 hover:shadow-2xl`;
-
-    return (
-      <div className={containerClass} style={{ boxSizing: 'border-box' }}>
-        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-
-        {/* Card Header - Terms of Use */}
-        <div className="flex justify-between items-start z-10 w-full">
-          <div className="text-left">
-            <h6 className="text-[7.5px] font-sans font-black uppercase tracking-wider leading-none text-amber-500">
-              ข้อตกลงและเงื่อนไขความปลอดภัย
-            </h6>
-            <span className="text-[6px] tracking-widest text-slate-300 font-mono block mt-0.5 uppercase">
-              TERMS AND CONDITIONS OF USAGE
-            </span>
-          </div>
-          <span className="text-[8px] font-bold text-slate-400 select-none">CR-80 SECURE PASS</span>
-        </div>
-
-        {/* Terms list & QR side-by-side */}
-        <div className="flex gap-3 justify-between items-center my-1.5 flex-1 z-10 w-full">
-          {/* Rules List */}
-          <div className="flex-1 text-[6.5px] text-slate-300 space-y-1 font-sans leading-tight text-left">
-            <p className="flex items-start gap-1">
-              <span className="text-amber-500">1.</span>
-              <span>บัตรนี้เป็นทรัพย์สินสถาบันศึกษา บัญญัติให้ติดตัวไว้ตลอดเวลาขณะปฏิบัติบำรุงในโรงเก็บอากาศยาน (Wear card always in hangar)</span>
-            </p>
-            <p className="flex items-start gap-1">
-              <span className="text-amber-500">2.</span>
-              <span>ไม่อนุญาตให้ผู้อื่นยืมใช้โดยตรง หากฝ่าฝืนมีโทษปรับทางกฎระเบียบวินัยขั้นสูงสุด (Strictly non-transferable)</span>
-            </p>
-            <p className="flex items-start gap-1">
-              <span className="text-amber-500">3.</span>
-              <span>หากเก็บได้โปรดนำคืน แผนกพัฒนาการจัดฝึกอบรมช่างและบำรุงอากาศยาน ทันที (If found, reward upon returning)</span>
-            </p>
-          </div>
-
-          {/* Large dynamic QR Code - Satisfies request "สร้างQR ให้ใหญ่กว่านี้นิดหนึ่ง" */}
-          <div className="shrink-0 flex flex-col items-center bg-white p-1 rounded-lg border border-neutral-300 shadow-xs select-none">
-            <img 
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
-              alt="QR Check" 
-              className="w-11 h-11 rounded border border-neutral-100 p-0.5 animate-pulse"
-              referrerPolicy="no-referrer"
-            />
-            <span className="text-[4.5px] font-mono font-bold text-neutral-500 mt-0.5 uppercase tracking-widest leading-none scale-90">CHECK ID</span>
-            <span className="text-[5.5px] text-[#0F172A] font-extrabold mt-0.5 leading-none">{currentUser.id}</span>
-          </div>
-        </div>
-
-        {/* Back Card Footer - Authorized sign off */}
-        <div className="flex justify-between items-end border-t border-dashed border-white/20 pt-1.5 z-10 mt-0.5 w-full">
-          <div className="text-[5.5px] text-slate-400 font-mono text-left">
-            <span>ISSUED BY ACADEMIC AVIATION COUNCIL</span>
-            <span className="block mt-0.5">© 2026 AVIATION MAINTENANCE SYSTEM.</span>
-          </div>
-
-          {/* Chief approval signature line */}
-          <div className="text-right flex flex-col items-center mr-1">
-            <span className="text-[8px] font-serif italic font-extrabold tracking-wide text-[#E2E8F0]/80 leading-none select-none opacity-80 h-3 flex items-center">
-              Adm. Chief Commander
-            </span>
-            <div className="w-[50px] h-[0.5px] bg-white/40 border-t border-dashed mt-0.5"></div>
-            <span className="text-[5px] text-slate-400 font-bold tracking-wider uppercase leading-none mt-0.5">AUTHORIZATION</span>
-          </div>
-        </div>
-
-        {/* Dynamic decorative colored safety stripe at the very bottom */}
-        <div className={`absolute bottom-0 left-0 right-0 h-1.5 ${t.stripeClass}`} />
-      </div>
-    );
-  };
-
-  const renderIdCardVertical = (mode: 'screen' | 'print') => {
-    const t = getThemeStyles();
-    const isPrint = mode === 'print';
-
-    const containerClass = isPrint
-      ? `${t.bgClass} physical-card-vertical relative flex flex-col justify-between items-center text-center overflow-hidden h-[85.6mm] w-[53.98mm] shadow-none`
-      : `${t.bgClass} w-[245px] h-[388px] select-none rounded-[14px] shadow-xl relative flex flex-col justify-between items-center text-center overflow-hidden transition-all hover:scale-101 hover:shadow-2xl`;
-
-    // Compact paddings to fit everything beautifully on the standard vertical layout
-    const padClass = isPrint ? 'p-[3mm] pt-[4.5mm] pb-[2.5mm]' : 'p-4 pt-5 pb-3';
-
-    return (
-      <div className={`${containerClass} ${padClass}`} style={{ boxSizing: 'border-box' }}>
-        {/* Subtle aircraft grid watermark background */}
-        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-
-        {/* Header Accent block */}
-        <div className={`absolute top-0 left-0 right-0 h-1.5 ${t.stripeClass}`} />
-        
-        {/* School Brand */}
-        <div className="w-full text-center">
-          <h4 className={`font-sans font-extrabold text-[12px] uppercase tracking-wider font-black leading-tight ${t.textColor}`}>
-            {idCardDept}
-          </h4>
-          <p className={`font-sans text-[7px] font-bold block mt-0.5 leading-tight ${t.descColor}`}>
-            สถาบันฝึกอบรมช่างบำรุงรักษาอากาศยาน
-          </p>
-          <p className={`font-mono text-[5.8px] mt-0.5 tracking-wider font-bold ${t.subDescColor}`}>
-            AIRCRAFT MAINTENANCE TRAINING CENTER
-          </p>
-        </div>
-
-        {/* Card Title Badge (Complete information!) */}
-        <div className="w-full flex justify-center my-0.5">
-          <div className={`px-2 py-0.5 rounded text-[7.5px] font-black uppercase tracking-wider leading-none ${t.tagClass}`}>
-            {idCardTitle}
-          </div>
-        </div>
-
-        {/* Photo Area (Compact to preserve other info layout) */}
-        <div className="shrink-0 flex justify-center my-1">
-          <div className={`border-2 ${t.photoBorder} rounded-xs overflow-hidden bg-neutral-100 relative ${isPrint ? 'w-[18mm] h-[22.5mm]' : 'w-[72px] h-[90px]'}`}>
-            <img
-              src={editPhoto || currentUser.photoUrl}
-              alt="Photo"
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        </div>
-
-        {/* User Info Details - containing Name, Position, ID, and Cohort/Batch */}
-        <div className="w-full text-center px-1">
-          <h3 className={`font-sans font-bold text-[12px] truncate leading-tight ${t.textColor}`}>
-            {editFirstNameEn && editLastNameEn ? `${editFirstNameEn} ${editLastNameEn}` : `${editFirstName} ${editLastName}`}
-          </h3>
-          
-          <div className="flex flex-col items-center mt-1 space-y-0.5">
-            <span className={`font-sans text-[8.5px] font-extrabold uppercase tracking-wide leading-none ${t.descColor}`}>
-              ตำแหน่ง: {currentUser.role || 'นักศึกษา'}
-            </span>
-            <div className="flex items-center justify-center gap-1.5 mt-0.5">
-              <span className={`font-sans text-[8px] font-black leading-none bg-neutral-200/40 px-1 py-0.5 rounded ${t.subLabelColor}`}>
-                รุ่น {idCardCustomBatch}
-              </span>
-              <span className="text-zinc-400 text-[8px]">•</span>
-              <span className={`font-mono text-[8px] font-black tracking-tight leading-none ${t.textColor}`}>
-                ID: {currentUser.id}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* QR Code and Sig row side-by-side to optimize vertical space on standard vertically-oriented cards */}
-        <div className={`w-full flex items-center justify-between gap-2 border-t border-dashed ${t.dashedBorder} pt-1.5 my-1`}>
-          {/* QR Code */}
-          <div className="flex flex-col items-center shrink-0">
-            <img 
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
-              alt="QR Verification" 
-              className={`border ${t.qrBorder} p-0.5 bg-white shadow-xs rounded-sm ${isPrint ? 'w-[14mm] h-[14mm]' : 'w-[54px] h-[54px]'}`} 
-              referrerPolicy="no-referrer"
-            />
-            <span className={`text-[4.5px] font-mono tracking-widest mt-0.5 uppercase font-black ${t.descColor}`}>VERIFY QR</span>
-          </div>
-
-          {/* Signature Area (Right side) */}
-          <div className="flex-1 flex flex-col items-center justify-center min-w-0">
-            {idCardShowSignature && editSig ? (
-              <img
-                src={editSig}
-                alt="ลายมือชื่อ"
-                className={`object-contain pointer-events-none mt-0.5 ${t.sigClass} ${isPrint ? 'h-[4.5mm] max-w-[20mm]' : 'h-[18px] max-w-[80px]'}`}
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className={`h-[18px] text-[7px] italic flex items-center justify-center ${t.subDescColor}`}>ไม่มีลายเซ็น</div>
-            )}
-            <span className={`text-[6.5px] font-sans font-bold tracking-tight mt-1 ${t.descColor}`}>ลายมือชื่อผู้ถือบัตร</span>
-          </div>
-        </div>
-
-        {/* Footer stamp */}
-        <div className={`w-full flex items-center justify-between border-t ${t.footerBorder} pt-1 text-[5.5px] font-mono uppercase tracking-tight leading-none ${t.descColor}`}>
-          <span>REG: {currentUser.createdAt || '23/04/2025'}</span>
-          <span>TLTC CARD v2.0</span>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -1285,7 +858,7 @@ export default function ExamOfficeStudentPanel({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">ชื่อจริง (ภาษาไทย) *</label>
+                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">ชื่อจริง *</label>
                   <input 
                     type="text" 
                     required 
@@ -1296,7 +869,7 @@ export default function ExamOfficeStudentPanel({
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">นามสกุล (ภาษาไทย) *</label>
+                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">นามสกุล *</label>
                   <input 
                     type="text" 
                     required 
@@ -1304,31 +877,6 @@ export default function ExamOfficeStudentPanel({
                     value={editLastName} 
                     onChange={(e) => setEditLastName(e.target.value)} 
                     className={`w-full border px-2 py-1 rounded focus:outline-none text-xs transition-colors ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">ชื่อจริง (ภาษาอังกฤษ) *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    disabled={!isEditingProfile} 
-                    value={editFirstNameEn} 
-                    onChange={(e) => setEditFirstNameEn(e.target.value)} 
-                    className={`w-full border px-2 py-1 rounded focus:outline-none text-xs transition-colors font-mono ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
-                  />
-                </div>
-                <div>
-                  <label className="block text-[9px] font-bold text-neutral-800 mb-0.5">นามสกุล (ภาษาอังกฤษ) *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    disabled={!isEditingProfile} 
-                    value={editLastNameEn} 
-                    onChange={(e) => setEditLastNameEn(e.target.value)} 
-                    className={`w-full border px-2 py-1 rounded focus:outline-none text-xs transition-colors font-mono ${!isEditingProfile ? 'bg-neutral-150 border-neutral-250 text-neutral-500 cursor-not-allowed' : 'bg-white border-neutral-300'}`} 
                   />
                 </div>
               </div>
@@ -1410,10 +958,10 @@ export default function ExamOfficeStudentPanel({
               </div>
             </form>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 bg-stone-100/50 border border-neutral-300 rounded-xl no-print">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-4 bg-stone-100/50 border border-neutral-300 rounded">
               <div className="flex flex-col sm:flex-row items-center gap-6">
-                <img src={currentUser.photoUrl} alt="avatar" className="w-16 h-20 object-cover rounded border border-neutral-400 shrink-0 shadow-sm" referrerPolicy="no-referrer" />
-                <div className="text-left">
+                <img src={currentUser.photoUrl} alt="avatar" className="w-16 h-20 object-cover rounded border border-neutral-400 shrink-0" referrerPolicy="no-referrer" />
+                <div>
                   <h4 className="font-bold text-neutral-900 text-sm">{currentUser.firstName} {currentUser.lastName}</h4>
                   <p className="font-sans text-[11px] text-neutral-600">ตำแหน่งการช่าง: <b>{currentUser.role}</b></p>
                   <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 font-mono text-[10px] px-2 py-0.5 rounded font-bold mt-2 inline-block">
@@ -1422,196 +970,18 @@ export default function ExamOfficeStudentPanel({
                 </div>
               </div>
               
-              {/* Profile QR Verification block - enlarged to meet user request */}
-              <div className="flex flex-col items-center bg-white p-4 rounded-xl border border-neutral-300 shadow-sm shrink-0 select-none">
+              {/* Profile QR Verification block */}
+              <div className="flex flex-col items-center bg-white p-3 rounded-lg border border-neutral-300 shadow-xs shrink-0 select-none">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAppOriginForQR() + '/?id=' + currentUser.id)}`} 
                   alt="Student ID QR Code" 
-                  className="w-24 h-24 rounded-lg border border-neutral-100 p-1"
+                  className="w-16 h-16 rounded border border-neutral-100 p-0.5"
                   referrerPolicy="no-referrer"
                 />
-                <span className="text-[8px] font-mono font-black text-neutral-500 mt-2 uppercase tracking-widest">VERIFICATION QR</span>
-                <span className="text-[10px] text-[#0F172A] font-extrabold mt-0.5 font-mono">{currentUser.id}</span>
+                <span className="text-[7.5px] font-mono font-bold text-neutral-500 mt-1.5 uppercase tracking-wider">VERIFICATION QR</span>
+                <span className="text-[9px] text-[#0F172A] font-bold mt-0.5">{currentUser.id}</span>
               </div>
             </div>
-
-            {/* -------------------- CUSTOM ID CARD GENERATOR SECTION -------------------- */}
-            <hr className="border-neutral-250 my-6 border-dashed no-print" />
-            
-            <div className="bg-slate-50 border border-slate-205 p-6 rounded-xl space-y-6 no-print text-left">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-                <div>
-                  <h4 className="font-sans font-extrabold text-[#0F172A] text-sm flex items-center gap-2">
-                    <span className="p-1.5 bg-[#0F172A] text-white rounded-md text-xs">🪪</span>
-                    เครื่องมือออกแบบและระบบจัดทำสร้างบัตรขึ้นทะเบียนด้วยตนเอง (Personal ID Card Creator)
-                  </h4>
-                  <p className="text-slate-500 text-[11px] mt-1 font-sans">
-                    ออกแบบ จัดหน้าตา และได้รับบัตรประจำตัวการช่างขนาดสากลพลาสติกจริง (CR-80: 8.56 ซม. x 5.40 ซม.) สัญชาติการวิชาอากาศยาน บันทึกพล็อตลงเครื่องพิมพ์ขนาด 1:1 ได้ทันที
-                  </p>
-                  
-                  {/* Print custom user tip for removing browser headers and footers */}
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 font-sans space-y-1">
-                    <p className="font-extrabold flex items-center gap-1.5 text-amber-950">
-                      <span>💡</span> วิธีลบที่อยู่เว็บและวันที่ตรงมุมขอบออก (ลบส่วนหัว/ท้ายกระดาษที่เบราว์เซอร์สร้าง):
-                    </p>
-                    <ul className="list-disc pl-4 space-y-0.5 mt-1 leading-relaxed text-amber-850">
-                      <li>
-                        <strong>สำหรับ iPad/iPhone (Safari):</strong> เมื่อกดปุ่มสั่งพิมพ์แล้ว ในหน้าตั้งค่าเครื่องพิมพ์ ให้เลื่อนลงล่างสุด แล้วปิดสวิตช์ <strong>"หัวกระดาษและท้ายกระดาษ" (Headers &amp; Footers)</strong> เพื่อทำให้ขอบขาวสะอาดสะอ้าน
-                      </li>
-                      <li>
-                        <strong>สำหรับ Google Chrome / คอมพิวเตอร์:</strong> ในหน้าพรีวิวสั่งพิมพ์ ให้กด "การตั้งค่าเพิ่มเติม" (More settings) &gt; ระยะขอบ (Margins) เลือก <strong>"ไม่มี" (None)</strong> และเปิดติ๊กถูก <strong>"กราฟิกพื้นหลัง" (Background graphics)</strong>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-2 self-start md:self-center shrink-0">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await generateAndOpenPDF('.print-id-card-pdf-target > div', `บัตรประจำตัว_${currentUser.firstName || 'Student'}_${currentUser.id}.pdf`, 'portrait');
-                      } catch (err) {
-                        console.error(err);
-                        window.print();
-                      }
-                    }}
-                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm"
-                  >
-                    <Award size={13} />
-                    <span>สร้างไฟล์ PDF (1:1 คมชัดสูง • แนะนำ)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.print();
-                    }}
-                    className="flex items-center gap-1.5 bg-neutral-950 hover:bg-neutral-850 text-white px-4 py-2.5 rounded-lg font-sans font-extrabold cursor-pointer text-xs transition-all shadow-sm"
-                  >
-                    <Printer size={13} />
-                    <span>พิมพ์ผ่านเบราว์เซอร์ทั่วไป</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Designer controls and live card models layout */}
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                {/* Inputs settings col */}
-                <div className="xl:col-span-5 space-y-4">
-                  <div className="bg-white p-5 rounded-xl border border-slate-205 shadow-2xs space-y-4">
-                    <h5 className="font-sans font-extrabold text-[#0F172A] text-[11px] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-2.5">
-                      <span>🎨</span> สีพื้นหลังบัตรประจำตัว (Background Theme Color)
-                    </h5>
-
-                    <p className="text-slate-500 text-[10.5px] font-sans leading-relaxed">
-                      ปรับแต่งเปลี่ยนสีธีมพื้นหลังของบัตรประจำตัวการช่างตามที่คุณต้องการ โครงสร้าง ข้อมูลส่วนตัว และตำแหน่งจะยังคงความถูกต้องตามระเบียบสถาบันอย่างเสถียร
-                    </p>
-
-                    {/* Themes list selection grid */}
-                    <div className="grid grid-cols-1 gap-2 pt-1">
-                      {[
-                        { key: 'minimal', label: 'Swiss Light (สีขาวราชการถนอมสายตา)', color: 'bg-white border-neutral-300 text-neutral-900 border shadow-xs' },
-                        { key: 'navy', label: 'Dark Navy (น้ำเงินเข้มหรูหราประจำการ)', color: 'bg-slate-900 border-indigo-505 text-white' },
-                        { key: 'dark', label: 'Stealth Black (ดำคาร์บอนพรีเมียมเข้มข่าว)', color: 'bg-zinc-950 border-orange-505 shadow-sm text-white' },
-                        { key: 'emerald', label: 'Emerald Tech (เขียวมรกตเทคโนโลยีชั้นสูง)', color: 'bg-emerald-950 border-emerald-500 text-white' },
-                        { key: 'gold', label: 'Security Gold (สีดำทองประดับเกียรติยศชั้นเอก)', color: 'bg-[#241f12] border-yellow-500 text-yellow-105' }
-                      ].map(t => (
-                        <button
-                          key={t.key}
-                          type="button"
-                          onClick={() => setIdCardTheme(t.key as any)}
-                          className={`flex items-center gap-3 p-3 rounded-lg border text-[10.5px] font-bold text-left cursor-pointer transition-all ${t.color} ${
-                            idCardTheme === t.key ? 'ring-2 ring-blue-500 ring-offset-1 scale-101 border-transparent' : 'opacity-85 hover:opacity-100 bg-opacity-90'
-                          }`}
-                        >
-                          <span className="w-3.5 h-3.5 rounded-full bg-current opacity-80 shrink-0 border border-slate-300" />
-                          <span className="leading-tight block font-sans">{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* ID Card Display previews col */}
-                <div className="xl:col-span-7 flex flex-col gap-5 items-center justify-center border-l border-slate-200/50 pl-2 xl:pl-6 min-h-[300px]">
-                  <h5 className="font-bold text-slate-800 text-[10.5px] uppercase tracking-wide self-start flex items-center gap-1 select-none">
-                    <span>✨</span> ตัวอย่างจำลองความแม่นยำสูง (LIVE DESIGN ACCURACY PREVIEW)
-                  </h5>
-
-                  <div className="flex flex-col items-center justify-center w-full py-4 animate-fade-in">
-                    <span className="text-[9px] font-black uppercase text-[#F59E0B] tracking-wider mb-3 block bg-[#0F172A] px-3 py-1 rounded-full border border-yellow-500/10">
-                      VERTICAL PORTRAIT PASS • แนวตั้งหน้าเดียวพร้อมคิวอาร์โค้ดสแกน
-                    </span>
-                    {renderIdCardVertical('screen')}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Print layout section hidden on screen but specifically visible when printing */}
-            <div className="hidden print:block font-sans print-layout">
-              {renderIdCardVertical('print')}
-            </div>
-
-            {/* Off-screen high-fidelity container for PDF generation */}
-            <div className="absolute opacity-0 pointer-events-none -top-[9999px] -left-[9999px] print-id-card-pdf-target">
-              {renderIdCardVertical('print')}
-            </div>
-
-            <style>{`
-              @media print {
-                @page {
-                  size: portrait;
-                  margin: 0mm !important;
-                }
-                html, body, #root {
-                  width: 100vw !important;
-                  height: 100vh !important;
-                  overflow: hidden !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  background: white !important;
-                  color: black !important;
-                }
-                /* Hide everything in the body by default */
-                body * {
-                  visibility: hidden !important;
-                }
-                /* Specifically show our print-layout container and all children inside it */
-                .print-layout, .print-layout * {
-                  visibility: visible !important;
-                }
-                .print-layout {
-                  display: flex !important;
-                  flex-direction: column !important;
-                  justify-content: center !important;
-                  align-items: center !important;
-                  width: 100vw !important;
-                  height: 100vh !important;
-                  position: fixed !important;
-                  left: 0 !important;
-                  top: 0 !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  background: white !important;
-                  z-index: 9999999 !important;
-                  overflow: hidden !important;
-                }
-                .physical-card-vertical {
-                  width: 53.98mm !important;
-                  height: 85.6mm !important;
-                  border: 0.5px solid #d1d5db !important;
-                  border-radius: 3.18mm !important;
-                  box-sizing: border-box !important;
-                  page-break-inside: avoid !important;
-                  page-break-after: avoid !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                  margin: auto !important;
-                }
-              }
-            `}</style>
 
             {/* End of content */}
           </div>
@@ -1751,36 +1121,6 @@ export default function ExamOfficeStudentPanel({
                       className="w-full border border-neutral-300 px-3 py-2 rounded focus:outline-none"
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-neutral-50 p-3 rounded-lg border border-neutral-200">
-                  <div>
-                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาเข้าเรียน (เริ่มเรียน) *</label>
-                    <input
-                      id="optSchStartTimeInput"
-                      type="time"
-                      required
-                      value={schStartTime}
-                      onChange={(e) => setSchStartTime(e.target.value)}
-                      className="w-full border border-neutral-300 px-3 py-1.5 rounded bg-white focus:outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-neutral-700 mb-1">เวลาเลิกเรียน (สิ้นสุดเรียน) *</label>
-                    <input
-                      id="optSchEndTimeInput"
-                      type="time"
-                      required
-                      value={schEndTime}
-                      onChange={(e) => setSchEndTime(e.target.value)}
-                      className="w-full border border-neutral-300 px-3 py-1.5 rounded bg-white focus:outline-none font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-zinc-650 font-sans pl-1 flex items-center gap-2">
-                  <span className="inline-block px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 font-bold border border-yellow-250 text-center text-[10px]">พักเที่ยง 12:30 น.</span>
-                  <span>ข้อมูลวิชาจะบันทึกพร้อมกาเวลาพักเรียนภาคเบรกเที่ยง <strong>(12:30 น.)</strong> ภายในระบบตารางเรียนอย่างเป็นทางการ</span>
                 </div>
 
                 <div className="flex justify-end pt-2 border-t">

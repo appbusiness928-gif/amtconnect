@@ -23,8 +23,6 @@ export interface User {
   photoUrl: string; // Data URL or placeholder
   firstName: string;
   lastName: string;
-  firstNameEn?: string; // English First Name
-  lastNameEn?: string;  // English Last Name
   role: UserRole;
   signature: string; // Base64 signature path or SVG representation
   email: string;
@@ -105,8 +103,6 @@ export interface ClassSchedule {
   startDate: string;
   endDate: string;
   instructorName: string;
-  startTime?: string;
-  endTime?: string;
 }
 
 export interface ExamSchedule {
