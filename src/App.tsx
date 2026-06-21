@@ -21,6 +21,27 @@ import { alerts as Swal } from './lib/alerts';
 import Swal2 from 'sweetalert2';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
+const mergeUsers = (fetchedUsers: User[], currentUsers: User[]): User[] => {
+  const merged = [...fetchedUsers];
+  for (const localUser of currentUsers) {
+    const existingIndex = merged.findIndex(u => String(u.id).toLowerCase() === String(localUser.id).toLowerCase());
+    if (existingIndex !== -1) {
+      const fetchedUser = merged[existingIndex];
+      merged[existingIndex] = {
+        ...localUser,
+        ...fetchedUser,
+        firstNameEn: fetchedUser.firstNameEn?.trim() || localUser.firstNameEn?.trim() || '',
+        lastNameEn: fetchedUser.lastNameEn?.trim() || localUser.lastNameEn?.trim() || '',
+        photoUrl: fetchedUser.photoUrl || localUser.photoUrl,
+        signature: fetchedUser.signature || localUser.signature,
+      };
+    } else {
+      merged.push(localUser);
+    }
+  }
+  return merged;
+};
+
 const getTimeBasedGreeting = () => {
   const hours = new Date().getHours();
   if (hours >= 5 && hours < 11) {
@@ -294,7 +315,7 @@ export default function App() {
         if (fetchedData && typeof fetchedData === 'object') {
           const currentDb = APIService.getDb();
           const mergedDb = {
-            users: fetchedData.users || currentDb.users,
+            users: mergeUsers(fetchedData.users || [], currentDb.users),
             roomRequests: fetchedData.roomRequests || currentDb.roomRequests,
             roomUsageRecords: fetchedData.roomUsageRecords || currentDb.roomUsageRecords,
             equipment: fetchedData.equipment || currentDb.equipment,
@@ -816,7 +837,7 @@ export default function App() {
         const currentDb = APIService.getDb();
         const mergedDb = {
           ...currentDb,
-          users: fetchedData.users || currentDb.users,
+          users: mergeUsers(fetchedData.users || [], currentDb.users),
           roomRequests: fetchedData.roomRequests || currentDb.roomRequests,
           roomUsageRecords: fetchedData.roomUsageRecords || currentDb.roomUsageRecords,
           equipment: fetchedData.equipment || currentDb.equipment,

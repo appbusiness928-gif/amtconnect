@@ -766,10 +766,15 @@ export function StudentIdCard({ user, onClose }: StudentIdCardProps) {
 
             {/* User Info Details */}
             <div className="w-full">
-              <h3 className="font-sans font-bold text-[11px] text-neutral-900 whitespace-normal break-words leading-tight px-0.5 text-center">
+              <h3 className="font-sans font-bold text-[11.5px] text-neutral-900 whitespace-normal break-words leading-tight px-0.5 text-center">
                 {user.firstName} {user.lastName}
               </h3>
-              <p className="font-sans text-[8.5px] font-bold text-neutral-600 mt-0.5 leading-tight">
+              {(user.firstNameEn || user.lastNameEn) && (
+                <p className="font-mono text-[8px] text-neutral-600 uppercase font-semibold tracking-tight leading-tight mt-0.5 text-center px-0.5">
+                  {user.firstNameEn} {user.lastNameEn}
+                </p>
+              )}
+              <p className="font-sans text-[8.5px] font-bold text-neutral-600 mt-1 leading-tight">
                 ตำแหน่ง: {user.role}
               </p>
               <p className="font-mono text-[8px] text-neutral-500 font-bold mt-0.5 leading-none">

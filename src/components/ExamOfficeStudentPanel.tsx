@@ -268,7 +268,7 @@ export default function ExamOfficeStudentPanel({
 
   // Equipment borrowing states
   const [targetCode, setTargetCode] = useState('');
-  const [borrowQty, setBorrowQty] = useState(1);
+  const [borrowQty, setBorrowQty] = useState<number | string>(1);
   const [borrowSignature, setBorrowSignature] = useState('');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [scannedTool, setScannedTool] = useState<Equipment | null>(null);
@@ -675,6 +675,7 @@ export default function ExamOfficeStudentPanel({
   };
 
   const handleAddToBorrowCart = () => {
+    const qtyNum = parseInt(String(borrowQty), 10) || 1;
     if (!targetCode) {
       Swal.fire({ icon: 'error', title: 'ระบุรหัสคิวอาร์โค้ด', text: 'โปรดสแกนป้ายคิวอาร์โค้ดหรือป้อนรหัสอุปกรณ์ก่อน', confirmButtonColor: '#171717' });
       return;
@@ -701,7 +702,7 @@ export default function ExamOfficeStudentPanel({
 
     const existingCartItem = borrowCart.find(item => item.code === match.code);
     const existingQty = existingCartItem ? existingCartItem.qty : 0;
-    const requestedTotal = existingQty + borrowQty;
+    const requestedTotal = existingQty + qtyNum;
 
     if (available < requestedTotal) {
       Swal.fire({
@@ -716,7 +717,7 @@ export default function ExamOfficeStudentPanel({
     if (existingCartItem) {
       setBorrowCart(borrowCart.map(item => item.code === match.code ? { ...item, qty: requestedTotal } : item));
     } else {
-      setBorrowCart([...borrowCart, { code: match.code, toolName: match.toolName, qty: borrowQty }]);
+      setBorrowCart([...borrowCart, { code: match.code, toolName: match.toolName, qty: qtyNum }]);
     }
 
     setTargetCode('');
@@ -726,7 +727,7 @@ export default function ExamOfficeStudentPanel({
     Swal.fire({
       icon: 'success',
       title: 'เพิ่มอุปกรณ์เรียบร้อย',
-      text: `เพิ่ม ${match.toolName} จำนวน ${borrowQty} EA ลงในรายการที่จะยืมเรียบร้อยแล้ว`,
+      text: `เพิ่ม ${match.toolName} จำนวน ${qtyNum} EA ลงในรายการที่จะยืมเรียบร้อยแล้ว`,
       timer: 1500,
       showConfirmButton: false,
     });
@@ -926,6 +927,11 @@ export default function ExamOfficeStudentPanel({
             <div className={`text-[11.5px] font-bold tracking-tight whitespace-normal break-words leading-tight px-0.5 ${idCardTheme === 'minimal' ? 'text-neutral-950' : 'text-white'}`}>
               {editFirstName} {editLastName}
             </div>
+            {(editFirstNameEn || editLastNameEn) && (
+              <div className={`text-[8.5px] font-mono tracking-tight whitespace-normal break-words leading-tight px-0.5 uppercase mt-0.5 ${idCardTheme === 'minimal' ? 'text-neutral-600 font-medium' : 'text-slate-350'}`}>
+                {editFirstNameEn} {editLastNameEn}
+              </div>
+            )}
             
             <div className="text-[8.5px] font-sans font-medium mt-0.5">
               <span className="text-zinc-400 uppercase text-[6.5px] block font-bold">POSITION</span>
@@ -1130,6 +1136,11 @@ export default function ExamOfficeStudentPanel({
           <h3 className={`font-sans font-bold text-[11px] whitespace-normal break-words leading-tight px-0.5 ${t.textColor}`}>
             {editFirstName} {editLastName}
           </h3>
+          {(editFirstNameEn || editLastNameEn) && (
+            <p className={`font-mono text-[8.5px] tracking-tight whitespace-normal break-words leading-tight px-0.5 uppercase mt-0.5 ${idCardTheme === 'minimal' ? 'text-neutral-600 font-medium' : 'text-slate-350'}`}>
+              {editFirstNameEn} {editLastNameEn}
+            </p>
+          )}
           
           <div className="flex flex-col items-center mt-1 space-y-0.5">
             <span className={`font-sans text-[8.5px] font-extrabold uppercase tracking-wide leading-none ${t.descColor}`}>
@@ -1485,6 +1496,11 @@ export default function ExamOfficeStudentPanel({
                 <img src={currentUser.photoUrl} alt="avatar" className="w-16 h-20 object-cover rounded border border-neutral-400 shrink-0 shadow-sm" referrerPolicy="no-referrer" />
                 <div className="text-left">
                   <h4 className="font-bold text-neutral-900 text-sm">{currentUser.firstName} {currentUser.lastName}</h4>
+                  {(currentUser.firstNameEn || currentUser.lastNameEn) && (
+                    <p className="font-mono text-xs text-neutral-500 uppercase font-semibold leading-tight mb-1">
+                      {currentUser.firstNameEn} {currentUser.lastNameEn}
+                    </p>
+                  )}
                   <p className="font-sans text-[11px] text-neutral-600">ตำแหน่งการช่าง: <b>{currentUser.role}</b></p>
                   <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 font-mono text-[10px] px-2 py-0.5 rounded font-bold mt-2 inline-block">
                     บัญชีพร้อมใช้งาน (Approved)
@@ -2460,7 +2476,7 @@ export default function ExamOfficeStudentPanel({
                           type="number"
                           min={1}
                           value={borrowQty}
-                          onChange={(e) => setBorrowQty(parseInt(e.target.value) || 1)}
+                          onChange={(e) => setBorrowQty(e.target.value)}
                           className="w-24 border border-neutral-300 px-3 py-2 rounded focus:outline-none focus:border-neutral-900 font-mono text-sm"
                         />
                         <button
@@ -2501,7 +2517,7 @@ export default function ExamOfficeStudentPanel({
                   {/* Cart Items List */}
                   <div className="p-4 border border-slate-200 rounded-md bg-white space-y-3 shadow-2xs">
                     <h4 className="font-sans font-bold text-xs text-neutral-800 uppercase border-b border-slate-100 pb-1.5">
-                      2. ตะกร้า / รายการเครื่องมือช่างที่เตรียมยืมระบบ ({borrowCart.length} รายการ)
+                      2. รายการเครื่องมือช่างที่เตรียมยืมระบบ ({borrowCart.length} รายการ)
                     </h4>
                     {borrowCart.length === 0 ? (
                       <div className="text-center py-6 text-neutral-450 italic text-xs">
@@ -2558,7 +2574,7 @@ export default function ExamOfficeStudentPanel({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-neutral-800">เซ็นรับรองความปลอดภัยและยืมเครื่องมือคืนครบตามกติกาของ AMT *</label>
+                      <label className="block text-[10px] font-bold text-neutral-800">เซ็นรับรอง *</label>
                       <SignaturePad onSave={(data) => setBorrowSignature(data)} placeholder="วาดลายเซ็นของคุณด้านล่าง..." />
                     </div>
 
